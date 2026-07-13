@@ -54,6 +54,9 @@ a.title{color:var(--fg);text-decoration:none;font-weight:600}a.title:hover{color
 .bar{height:6px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:4px}.bar i{display:block;height:100%;background:var(--acc)}
 .cmp td,.cmp th{border-bottom:1px solid var(--line);padding:9px 10px;vertical-align:top;font-size:13px}
 .link{color:var(--acc);text-decoration:none}
+.phead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px}.phead h3{margin:0}
+.prow{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;margin:9px 0}.prow .k{font-size:11.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em;min-width:108px;flex:0 0 108px;font-weight:700}
+.chipro{display:inline-flex;align-items:center;gap:6px;background:var(--in);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:13px;margin:2px 0}
 </style></head><body>
 <div class="wrap">
   <!-- ONBOARDING -->
@@ -79,9 +82,9 @@ a.title{color:var(--fg);text-decoration:none;font-weight:600}a.title:hover{color
     </div>
 
     <div class="step" data-s="3">
-      <label>Roles / keywords you want</label>
+      <label>🎯 Roles / keywords <span class="mut">(optional — become tick-able search suggestions)</span></label>
       <div class="tagbox" id="o-rolebox"><input id="o-roleinput" placeholder="Type a role, press Enter…"></div>
-      <label style="margin-top:16px">Your key skills <span class="mut">(drive the alignment %)</span></label>
+      <label style="margin-top:16px">🧩 Your key skills <span class="mut">(drive the alignment %)</span></label>
       <div class="tagbox" id="o-skillbox"><input id="o-skillinput" placeholder="e.g. Figma, user research, Python… Enter"></div>
     </div>
 
@@ -104,27 +107,45 @@ a.title{color:var(--fg);text-decoration:none;font-weight:600}a.title:hover{color
     <div class="top"><h1 id="hi">🔎 AI Job Search</h1>
       <div class="tools">
         <span class="mode" id="mode"></span>
-        <button class="iconbtn" id="slBtn">★ Shortlist (0)</button>
-        <div class="menu"><button class="iconbtn" id="gear">⚙︎ Profile</button>
+        <button class="iconbtn" id="slBtn">⭐ Shortlist (0)</button>
+        <div class="menu"><button class="iconbtn" id="gear">⚙️ Profile</button>
           <div class="pop hide" id="pop">
-            <button data-a="edit">✏︎ Edit profile</button><button data-a="links">🔗 Job sites & public sector</button>
+            <button data-a="edit">✏️ Edit profile</button><button data-a="links">🔗 Job sites & public sector</button>
             <button data-a="share">📤 Share (link / QR)</button>
-            <button data-a="export">⬇︎ Export profile</button><button data-a="import">⬆︎ Import profile</button>
-            <button data-a="reset">🗑 Reset</button>
+            <button data-a="export">⬇️ Export profile</button><button data-a="import">⬆️ Import profile</button>
+            <button data-a="reset">🗑️ Reset</button>
           </div>
         </div>
       </div>
     </div>
-    <div class="card">
+
+    <!-- PROFILE (top) -->
+    <div class="card" id="profileCard">
+      <div class="phead"><h3>👤 Your profile</h3><button class="iconbtn" id="editProfile">✏️ Edit</button></div>
+      <div id="profileBody"></div>
+    </div>
+
+    <!-- SEARCH TOOL (bottom) -->
+    <div class="card" id="searchCard" style="margin-top:16px">
+      <h3>🔎 Search jobs</h3>
       <div class="f">
-        <div class="f-role"><label>Role / keywords</label><input id="role" list="roles"></div><datalist id="roles"></datalist>
-        <div class="f-city"><label>Where — pick or type any city</label><input id="loc" list="locs" placeholder="Any city…"><datalist id="locs"></datalist></div>
-        <div class="f-age"><label>Posted within</label><select id="age">
-          <option value="7">Last 7 days</option><option value="14" selected>Last 14 days</option>
-          <option value="30">Last 30 days</option><option value="9999">Any time</option></select></div>
+        <div class="f-city"><label>📍 Where — pick or type any city</label><input id="loc" list="locs" placeholder="🌍 Any city…"><datalist id="locs"></datalist></div>
+        <div class="f-age"><label>🕒 Posted within</label><select id="age">
+          <option value="30">⏱️ Last 30 minutes</option>
+          <option value="1440">🕐 Last 24 hours</option>
+          <option value="4320">📆 Last 3 days</option>
+          <option value="10080" selected>📅 Last 7 days</option>
+          <option value="20160">📅 Last 14 days</option>
+          <option value="43200">🗓️ Last 30 days</option>
+          <option value="9999999">♾️ Any time</option></select></div>
       </div>
-      <div class="chips" id="srcpick" style="margin-top:14px"></div>
-      <button class="btn" id="go" style="margin-top:16px">Search</button>
+      <label style="margin-top:14px">🎯 Keywords — suggested from your profile · tick the ones to match</label>
+      <div class="chips" id="kwpick"></div>
+      <input id="kwadd" placeholder="➕ Add another keyword (optional) — press Enter" style="margin-top:9px;max-width:360px">
+      <div class="help" id="kwhelp"></div>
+      <label style="margin-top:14px">🌐 Sources to search</label>
+      <div class="chips" id="srcpick"></div>
+      <button class="btn" id="go" style="margin-top:16px">🔍 Search</button>
       <div class="status" id="status"></div>
     </div>
     <div class="count" id="count"></div>
@@ -220,7 +241,7 @@ $('#o-cities').onchange=e=>{const inp=e.target;if(!inp||inp.type!=='checkbox')re
 $('#o-back').onclick=()=>{if(step>0){step--;showStep();}};
 $('#o-next').onclick=()=>{
   if(step===1)draft.name=$('#o-name').value.trim();
-  if(step===3&&!draft.roles.length){const v=$('#o-roleinput').value.trim();if(v){draft.roles.push(v);tags('o-rolebox','roles');$('#o-roleinput').value='';}if(!draft.roles.length){alert('Add at least one role.');return;}}
+  if(step===3){[['o-roleinput','roles','o-rolebox'],['o-skillinput','skills','o-skillbox']].forEach(([id,f,box])=>{const v=$('#'+id).value.trim();if(v&&!draft[f].map(x=>x.toLowerCase()).includes(v.toLowerCase())){draft[f].push(v);tags(box,f);$('#'+id).value='';}});}
   if(step===4&&!draft.cities.length){alert('Pick at least one city.');return;}
   if(step<STEPS-1){step++;showStep();return;}
   draft.notes=$('#o-notes').value.trim();
@@ -259,12 +280,37 @@ function openApp(){
   $('#hi').textContent='🔎 '+(P.name?P.name+"'s ":'')+'AI Job Search';
   $('#mode').textContent=MODE==='local'?'local · all sources':'hosted · live multi-source';
   $('#mode').title=MODE==='local'?'Running locally — LinkedIn + local boards added on top of the live browser sources':'Hosted site — searches Greenhouse, Lever, Ashby, Remotive & Arbeitnow live in your browser across dozens of companies. Run locally to add LinkedIn + Swiss/Danish boards.';
-  $('#roles').innerHTML=[...new Set(P.roles.concat(CFG.roles))].map(r=>'<option value="'+esc(r)+'">').join('');
-  $('#role').value=P.roles[0]||'';
   const opts=[];if(P.cities.length>1)opts.push('All my cities');opts.push('🌍 Worldwide');P.cities.forEach(c=>opts.push(c));
   $('#locs').innerHTML=opts.map(o=>'<option value="'+esc(o)+'">').join('');
   $('#loc').value=P.cities.length>1?'All my cities':(P.cities[0]||'🌍 Worldwide');
-  renderSrc();syncSL();
+  renderProfile();renderKeywords();renderSrc();syncSL();
+}
+// ---- profile panel (top) ----
+function renderProfile(){
+  const chip=t=>'<span class="chipro">'+esc(t)+'</span>';
+  const lvl=(LEVELS.find(l=>l[0]===P.level)||['','—'])[1];
+  const none='<span class="mut">—</span>';
+  const rows=[
+    ['🧑 Name', P.name?esc(P.name):none],
+    ['🎓 Level', esc(lvl)],
+    ['🎯 Roles', (P.roles||[]).length?P.roles.map(chip).join(' '):'<span class="mut">none yet</span>'],
+    ['🧩 Skills', (P.skills||[]).length?P.skills.map(chip).join(' '):'<span class="mut">none yet</span>'],
+    ['📍 Cities', (P.cities||[]).length?P.cities.map(chip).join(' '):none],
+  ];
+  if((P.docs||[]).length)rows.push(['📎 Documents', P.docs.map(d=>chip('📄 '+d.name)).join(' ')]);
+  if(P.notes)rows.push(['📝 Notes', esc(P.notes)]);
+  $('#profileBody').innerHTML=rows.map(([k,v])=>'<div class="prow"><span class="k">'+k+'</span><span>'+v+'</span></div>').join('');
+}
+// ---- keyword suggestions (tick/untick; nothing is forced) ----
+function renderKeywords(){
+  const roles=(P.roles||[]), skills=(P.skills||[]), seen=new Set();
+  const mk=(t,on)=>{const k=t.toLowerCase();if(!t||seen.has(k))return '';seen.add(k);
+    return '<label class="chip'+(on?' sel':'')+'" data-kw="'+esc(t)+'"><input type="checkbox" '+(on?'checked':'')+'>'+esc(t)+'</label>';};
+  const html=roles.map(r=>mk(r,true)).join('')+skills.map(s=>mk(s,false)).join('');
+  $('#kwpick').innerHTML=html||'<span class="mut">No keywords in your profile yet — add one below, or leave empty to see every role ranked by fit.</span>';
+  $('#kwhelp').textContent=(roles.length||skills.length)
+    ? 'Suggested from your CV & interview. Untick to broaden — with none ticked, every job is shown, ranked by how well it fits you.'
+    : '';
 }
 function renderSrc(){
   const app=applicable($('#loc').value);
@@ -273,70 +319,81 @@ function renderSrc(){
 }
 $('#loc').addEventListener('input',renderSrc);
 $('#srcpick').onclick=e=>{const l=e.target.closest('[data-src]');if(!l)return;const cb=l.querySelector('input');setTimeout(()=>l.classList.toggle('sel',cb.checked),0);};
+$('#kwpick').onclick=e=>{const l=e.target.closest('[data-kw]');if(!l)return;const cb=l.querySelector('input');setTimeout(()=>l.classList.toggle('sel',cb.checked),0);};
+$('#kwadd').onkeydown=e=>{if(e.key!=='Enter')return;const v=e.target.value.trim();if(!v)return;
+  const box=$('#kwpick');if(!box.querySelector('[data-kw]'))box.innerHTML='';
+  if(![...box.querySelectorAll('[data-kw]')].some(l=>l.dataset.kw.toLowerCase()===v.toLowerCase())){
+    const l=document.createElement('label');l.className='chip sel';l.dataset.kw=v;l.innerHTML='<input type="checkbox" checked>'+esc(v);box.appendChild(l);}
+  e.target.value='';};
+$('#editProfile').onclick=startOnb;
 
 // ============ Search ============
-function within(dateStr,days){if(!days||days>=9999)return true;if(!dateStr)return true;const t=Date.parse(dateStr);if(isNaN(t))return true;return t>=Date.now()-days*864e5;}
+// mins-based window; accepts a full ISO string OR an epoch-ms number for sub-day precision
+function within(ts,mins){if(!mins||mins>=9999999)return true;if(ts==null)return true;const t=typeof ts==='number'?ts:Date.parse(ts);if(isNaN(t))return true;return t>=Date.now()-mins*60000;}
 function qMatch(title,q){if(!q)return true;const t=(title||'').toLowerCase();q=q.toLowerCase().trim();if(t.includes(q))return true;return q.split(/\s+/).every(x=>t.includes(x));}
+function qMatchAny(title,kws){if(!kws||!kws.length)return true;return kws.some(k=>qMatch(title,k));}
 function lMatch(loc,filter){if(!filter)return true;const hay=(loc||'').toLowerCase();return hay.includes(filter.toLowerCase());}
 const coName=c=>CFG.coNames[c]||c.charAt(0).toUpperCase()+c.slice(1);
 const isoDay=v=>{const t=Date.parse(v);return isNaN(t)?null:new Date(t).toISOString().slice(0,10);};
 // --- browser-reachable (CORS-open) source fetchers ---
-async function ghSearch(role,cf,age){const out=[];
+async function ghSearch(kws,cf,age){const out=[];
   await Promise.all(CFG.greenhouse.map(async c=>{try{const r=await fetch('https://boards-api.greenhouse.io/v1/boards/'+c+'/jobs?content=true');if(!r.ok)return;const d=await r.json();
-    for(const j of d.jobs||[]){if(!qMatch(j.title,role))continue;const loc=(j.location&&j.location.name)||'';
+    for(const j of d.jobs||[]){if(!qMatchAny(j.title,kws))continue;const loc=(j.location&&j.location.name)||'';
       if(cf&&cf.length&&!cf.some(x=>lMatch(loc,x)))continue;if(!within(j.first_published,age))continue;
       out.push({id:'gh'+j.id,title:j.title,company:j.company_name||coName(c),location:loc,date:(j.first_published||'').slice(0,10)||null,url:(j.absolute_url||'').split('?')[0],source:'Greenhouse',city:loc,content:j.content||''});}}catch{}}));
   return out;}
-async function leverSearch(role,cf,age){const out=[];
+async function leverSearch(kws,cf,age){const out=[];
   await Promise.all(CFG.lever.map(async c=>{try{const r=await fetch('https://api.lever.co/v0/postings/'+c+'?mode=json');if(!r.ok)return;const a=await r.json();
-    for(const j of a||[]){if(!qMatch(j.text,role))continue;const loc=(j.categories&&j.categories.location)||'';
-      if(cf&&cf.length&&!cf.some(x=>lMatch(loc,x)))continue;const date=j.createdAt?new Date(j.createdAt).toISOString().slice(0,10):null;if(!within(date,age))continue;
-      out.push({id:'lv'+j.id,title:j.text,company:coName(c),location:loc,date,url:j.hostedUrl,source:'Lever',city:loc,content:j.descriptionPlain||''});}}catch{}}));
+    for(const j of a||[]){if(!qMatchAny(j.text,kws))continue;const loc=(j.categories&&j.categories.location)||'';
+      if(cf&&cf.length&&!cf.some(x=>lMatch(loc,x)))continue;if(!within(j.createdAt,age))continue;
+      out.push({id:'lv'+j.id,title:j.text,company:coName(c),location:loc,date:j.createdAt?new Date(j.createdAt).toISOString().slice(0,10):null,url:j.hostedUrl,source:'Lever',city:loc,content:j.descriptionPlain||''});}}catch{}}));
   return out;}
-async function ashbySearch(role,cf,age){const out=[];
+async function ashbySearch(kws,cf,age){const out=[];
   await Promise.all(CFG.ashby.map(async c=>{try{const r=await fetch('https://api.ashbyhq.com/posting-api/job-board/'+c);if(!r.ok)return;const o=await r.json();
-    for(const j of o.jobs||[]){if(j.isListed===false)continue;if(!qMatch(j.title,role))continue;const loc=j.location||(j.isRemote?'Remote':'');
-      if(cf&&cf.length&&!cf.some(x=>lMatch(loc,x)))continue;const date=(j.publishedAt||'').slice(0,10)||null;if(!within(date,age))continue;
-      out.push({id:'as'+j.id,title:j.title,company:coName(c),location:loc,date,url:j.jobUrl||j.applyUrl,source:'Ashby',city:loc,content:j.descriptionPlain||''});}}catch{}}));
+    for(const j of o.jobs||[]){if(j.isListed===false)continue;if(!qMatchAny(j.title,kws))continue;const loc=j.location||(j.isRemote?'Remote':'');
+      if(cf&&cf.length&&!cf.some(x=>lMatch(loc,x)))continue;if(!within(j.publishedAt,age))continue;
+      out.push({id:'as'+j.id,title:j.title,company:coName(c),location:loc,date:(j.publishedAt||'').slice(0,10)||null,url:j.jobUrl||j.applyUrl,source:'Ashby',city:loc,content:j.descriptionPlain||''});}}catch{}}));
   return out;}
-async function remotiveSearch(role,cf,age){const out=[]; // remote by nature — ignore city filter
-  try{const r=await fetch('https://remotive.com/api/remote-jobs?limit=200'+(role?'&search='+encodeURIComponent(role):''));if(!r.ok)return out;const o=await r.json();
-    for(const j of o.jobs||[]){if(!qMatch(j.title,role))continue;const loc=j.candidate_required_location||'Remote';const date=(j.publication_date||'').slice(0,10)||null;if(!within(date,age))continue;
-      out.push({id:'rm'+j.id,title:j.title,company:j.company_name||'',location:loc,date,url:j.url,source:'Remotive',city:loc,content:j.description||''});}}catch{}
+async function remotiveSearch(kws,cf,age){const out=[]; // remote by nature — ignore city filter
+  try{const r=await fetch('https://remotive.com/api/remote-jobs?limit=200');if(!r.ok)return out;const o=await r.json();
+    for(const j of o.jobs||[]){if(!qMatchAny(j.title,kws))continue;const loc=j.candidate_required_location||'Remote';if(!within(j.publication_date,age))continue;
+      out.push({id:'rm'+j.id,title:j.title,company:j.company_name||'',location:loc,date:(j.publication_date||'').slice(0,10)||null,url:j.url,source:'Remotive',city:loc,content:j.description||''});}}catch{}
   return out;}
-async function arbeitnowSearch(role,cf,age){const out=[];
+async function arbeitnowSearch(kws,cf,age){const out=[];
   try{for(let pg=1;pg<=2;pg++){const r=await fetch('https://www.arbeitnow.com/api/job-board-api?page='+pg);if(!r.ok)break;const o=await r.json();
-    for(const j of o.data||[]){if(!qMatch(j.title,role))continue;const loc=j.location||(j.remote?'Remote':'');
-      if(cf&&cf.length&&!cf.some(x=>lMatch(loc,x)))continue;const date=j.created_at?new Date(j.created_at*1000).toISOString().slice(0,10):null;if(!within(date,age))continue;
-      out.push({id:'an'+j.slug,title:j.title,company:j.company_name||'',location:loc,date,url:j.url,source:'Arbeitnow',city:loc,content:j.description||''});}
+    for(const j of o.data||[]){if(!qMatchAny(j.title,kws))continue;const loc=j.location||(j.remote?'Remote':'');
+      if(cf&&cf.length&&!cf.some(x=>lMatch(loc,x)))continue;if(!within(j.created_at?j.created_at*1000:null,age))continue;
+      out.push({id:'an'+j.slug,title:j.title,company:j.company_name||'',location:loc,date:j.created_at?new Date(j.created_at*1000).toISOString().slice(0,10):null,url:j.url,source:'Arbeitnow',city:loc,content:j.description||''});}
     if(!(o.data&&o.data.length))break;}}catch{}
   return out;}
 const FETCHERS={greenhouse:ghSearch,lever:leverSearch,ashby:ashbySearch,remotive:remotiveSearch,arbeitnow:arbeitnowSearch};
-async function browserSearch(role,cf,age,sel){
+async function browserSearch(kws,cf,age,sel){
   const status={};
   const jobs=(await Promise.all(sel.filter(s=>FETCHERS[s]).map(async s=>{
-    let r=[];try{r=await FETCHERS[s](role,cf,age);}catch{r=[];}status[CFG.sources[s]]=r.length;return r;
+    let r=[];try{r=await FETCHERS[s](kws,cf,age);}catch{r=[];}status[CFG.sources[s]]=r.length;return r;
   }))).flat();
   return {results:jobs,status};
 }
 async function go(){
-  const role=$('#role').value.trim();
+  const kws=[...$('#kwpick').querySelectorAll('input:checked')].map(i=>i.closest('[data-kw]').dataset.kw);
   const sel=[...$('#srcpick').querySelectorAll('input:checked')].map(i=>i.closest('[data-src]').dataset.src);
   const lv=$('#loc').value.trim(),age=+$('#age').value;
   let cities;if(lv==='All my cities')cities=P.cities;else if(lv==='🌍 Worldwide')cities=['__WORLD__'];else cities=[lv];
   const cf=lv==='🌍 Worldwide'?null:(lv==='All my cities'?P.cities:[lv]);
-  if(!role||!sel.length)return;
+  if(!sel.length){$('#status').textContent='Pick at least one source to search.';return;}
   const btn=$('#go');btn.disabled=true;btn.textContent='Searching…';
   $('#status').innerHTML='<span class="spin"></span> searching…';$('#count').textContent='';$('#resPanel').classList.add('hide');
   const browserSel=sel.filter(s=>CFG.browser.includes(s));
   const serverSel=sel.filter(s=>!CFG.browser.includes(s)); // linkedin + local boards (need backend)
+  // CLIs take a single query string; use the first ticked keyword (or a profile role)
+  const serverRole=kws[0]||(P.roles&&P.roles[0])||'', serverDays=Math.max(1,Math.ceil(age/1440));
   let results=[],status={};
   try{
     // browser sources run live in EVERY mode
-    const bp=browserSearch(role,cf,age,browserSel);
-    // backend-only sources run when a local server is present
-    const sp=(MODE==='local'&&serverSel.length)
-      ? fetch('/api/search?'+new URLSearchParams({cities:JSON.stringify(cities),role,age,sources:serverSel.join(','),level:P.level}))
+    const bp=browserSearch(kws,cf,age,browserSel);
+    // backend-only sources run when a local server is present and we have a query
+    const sp=(MODE==='local'&&serverSel.length&&serverRole)
+      ? fetch('/api/search?'+new URLSearchParams({cities:JSON.stringify(cities),role:serverRole,age:serverDays,sources:serverSel.join(','),level:P.level}))
           .then(r=>r.json()).then(d=>({results:d.results||[],status:d.status||{}})).catch(()=>({results:[],status:{}}))
       : Promise.resolve({results:[],status:{}});
     const [b,s]=await Promise.all([bp,sp]);
@@ -385,7 +442,7 @@ function render(rows){
 }
 $('#results').onclick=e=>{const st=e.target.closest('.star');if(!st)return;const j=LASTROWS.find(x=>x.url===st.dataset.url);if(!j)return;
   if(isSL(j)){SL=SL.filter(x=>x.url!==j.url);st.classList.remove('on');st.textContent='☆';}else{SL.push(j);st.classList.add('on');st.textContent='★';}saveSL();};
-$('#go').onclick=go;$('#role').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
+$('#go').onclick=go;$('#loc').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
 function isSL(j){return SL.some(x=>x.url===j.url)}
 function syncSL(){$('#slBtn').textContent='★ Shortlist ('+SL.length+')'}
 
