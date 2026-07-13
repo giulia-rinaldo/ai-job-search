@@ -1,0 +1,20 @@
+{
+  "name": "greenhouse-careers-cli",
+  "version": "1.0.0",
+  "description": "CLI for searching jobs across Greenhouse-hosted company career sites (Figma, Airbnb, Stripe, …) — public API, zero runtime dependencies.",
+  "type": "module",
+  "main": "src/cli.ts",
+  "bin": {
+    "greenhouse-careers": "src/cli.ts"
+  },
+  "scripts": {
+    "start": "bun run src/cli.ts",
+    "test": "bun test --timeout 30000",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/bun": "latest"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "jobbank-cli",
+  "version": "1.0.0",
+  "description": "CLI for Akademikernes Jobbank (jobbank.dk) — Danish academic job board via RSS. Zero runtime dependencies.",
+  "type": "module",
+  "main": "src/cli.ts",
+  "bin": {
+    "jobbank": "src/cli.ts"
+  },
+  "scripts": {
+    "start": "bun run src/cli.ts",
+    "test": "bun test --timeout 30000",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.4.0"
+  }
+}
