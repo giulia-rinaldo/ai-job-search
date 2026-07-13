@@ -164,6 +164,7 @@ label.q{display:block;font-size:13.5px;color:var(--fg);margin:12px 0 5px;font-we
       <div class="help" id="kwhelp"></div>
       <label style="margin-top:14px">🌐 Sources to search</label>
       <div class="chips" id="srcpick"></div>
+      <div class="chips" id="cityBoards" style="margin-top:8px"></div>
       <button class="btn" id="go" style="margin-top:16px">🔍 Search</button>
       <div class="status" id="status"></div>
     </div>
@@ -191,6 +192,8 @@ const CFG = {
   sources:{linkedin:'LinkedIn',greenhouse:'Big Tech (Greenhouse)',lever:'Lever companies',ashby:'Ashby companies',remotive:'Remote (Remotive)',arbeitnow:'Europe (Arbeitnow)',jobsch:'jobs.ch',jobup:'jobup.ch',jobindex:'Jobindex (DK)',jobbank:'Jobbank (DK)'},
   // sources a browser can fetch directly (CORS-open) — these power the free hosted site
   browser:['greenhouse','lever','ashby','remotive','arbeitnow'],
+  // city boards reachable in-browser only via a CORS proxy (best-effort; deep-link fallback)
+  proxyBoards:['jobsch','jobup','jobindex','jobbank'],
   eu:['Helsinki','Copenhagen','Amsterdam','Zurich','Geneva','Basel','Bern','Paris','Brussels','London','Berlin'],
   greenhouse:['figma','webflow','airbnb','pinterest','stripe','anthropic','reddit','discord','monzo','dropbox','coinbase','robinhood','lyft','gitlab','asana','brex'],
   lever:['spotify','palantir','ro'],
@@ -290,8 +293,8 @@ function applicableForCities(cities){
   let keys;
   if(!cities.length||cities[0]==='__WORLD__')keys=['linkedin','greenhouse','lever','ashby','remotive','arbeitnow'];
   else{const s=new Set();cities.forEach(c=>cityKeys(c).forEach(x=>s.add(x)));keys=[...s];}
-  // hosted (static) site can only reach CORS-open browser sources; local mode adds the rest
-  return MODE==='local'?keys:keys.filter(k=>CFG.browser.includes(k));
+  // hosted: CORS-open sources + proxy-reachable city boards. local mode adds LinkedIn + CLIs.
+  return MODE==='local'?keys:keys.filter(k=>CFG.browser.includes(k)||CFG.proxyBoards.includes(k));
 }
 function selectedCities(){
   if($('#wwToggle')&&$('#wwToggle').checked)return ['__WORLD__'];
@@ -368,8 +371,17 @@ function renderKeywords(){
 }
 function renderSrc(){
   const app=applicableForCities(selectedCities());
-  $('#srcpick').innerHTML=app.length?app.map(k=>'<label class="chip sel" data-src="'+k+'"><input type="checkbox" checked>'+esc(CFG.sources[k]||k)+'</label>').join('')
+  $('#srcpick').innerHTML=app.length?app.map(k=>'<label class="chip sel" data-src="'+k+'"><input type="checkbox" checked>'+esc(CFG.sources[k]||k)+(CFG.proxyBoards.includes(k)&&MODE!=='local'?' <span class="mut sm">(via proxy)</span>':'')+'</label>').join('')
     :'<span class="mut">No searchable source for that selection'+(MODE==='static'?' in hosted mode — run locally for more.':'.')+'</span>';
+  renderCityBoards();
+}
+function renderCityBoards(){
+  const box=$('#cityBoards');if(!box)return;const cities=selectedCities();
+  if(!cities.length||cities[0]==='__WORLD__'){box.innerHTML='';return;}
+  const q=([...document.querySelectorAll('#kwpick input:checked')].map(i=>i.closest('[data-kw]').dataset.kw)[0])||primaryRole();
+  const seen=new Set(),chips=[];
+  cities.forEach(c=>(CFG.cities[c]||[]).forEach(k=>{if(BOARDS[k]&&!seen.has(k+'|'+c)){seen.add(k+'|'+c);chips.push('<a class="chip link" href="'+BOARDS[k].link(q,c)+'" target="_blank" rel="noopener">🔗 '+esc(BOARDS[k].label)+' · '+esc(c)+' ↗</a>');}}));
+  box.innerHTML=chips.length?'<span class="mut sm" style="width:100%">🔗 City boards — open pre-filled (also searched in-app where the site allows):</span>'+chips.join(''):'';
 }
 function addCity(c){if(!c)return;P.cities=P.cities||[];if(!P.cities.some(x=>x.toLowerCase()===c.toLowerCase())){P.cities.push(c);save();renderCityPick();renderProfile();}renderSrc();}
 $('#citypick').onclick=e=>{const l=e.target.closest('[data-city2]');if(!l)return;const cb=l.querySelector('input');setTimeout(()=>{l.classList.toggle('sel',cb.checked);renderSrc();},0);};
@@ -377,7 +389,7 @@ $('#wwToggle').addEventListener('change',()=>{$('#citypick').style.opacity=$('#w
 $('#cityadd').addEventListener('keydown',e=>{if(e.key==='Enter'){addCity(e.target.value.trim());e.target.value='';}});
 $('#cityadd').addEventListener('change',e=>{if(Object.keys(CFG.cities).includes(e.target.value.trim())){addCity(e.target.value.trim());e.target.value='';}});
 $('#srcpick').onclick=e=>{const l=e.target.closest('[data-src]');if(!l)return;const cb=l.querySelector('input');setTimeout(()=>l.classList.toggle('sel',cb.checked),0);};
-$('#kwpick').onclick=e=>{const l=e.target.closest('[data-kw]');if(!l)return;const cb=l.querySelector('input');setTimeout(()=>l.classList.toggle('sel',cb.checked),0);};
+$('#kwpick').onclick=e=>{const l=e.target.closest('[data-kw]');if(!l)return;const cb=l.querySelector('input');setTimeout(()=>{l.classList.toggle('sel',cb.checked);renderCityBoards();},0);};
 $('#kwadd').onkeydown=e=>{if(e.key!=='Enter')return;const v=e.target.value.trim();if(!v)return;
   const box=$('#kwpick');if(!box.querySelector('[data-kw]'))box.innerHTML='';
   if(![...box.querySelectorAll('[data-kw]')].some(l=>l.dataset.kw.toLowerCase()===v.toLowerCase())){
@@ -424,7 +436,69 @@ async function arbeitnowSearch(kws,cf,age){const out=[];
       out.push({id:'an'+j.slug,title:j.title,company:j.company_name||'',location:loc,date:j.created_at?new Date(j.created_at*1000).toISOString().slice(0,10):null,url:j.url,source:'Arbeitnow',city:loc,content:j.description||''});}
     if(!(o.data&&o.data.length))break;}}catch{}
   return out;}
-const FETCHERS={greenhouse:ghSearch,lever:leverSearch,ashby:ashbySearch,remotive:remotiveSearch,arbeitnow:arbeitnowSearch};
+// ---- CORS-proxied city boards (jobs.ch, jobup.ch, Jobindex, Jobbank) ----
+const PROXIES=['https://api.allorigins.win/raw?url=','https://corsproxy.io/?url=','https://api.codetabs.com/v1/proxy/?quest='];
+async function proxyFetch(url){
+  for(const p of PROXIES){try{
+    const r=await Promise.race([fetch(p+encodeURIComponent(url)),new Promise((_,x)=>setTimeout(()=>x('t'),9000))]);
+    if(r&&r.ok){const t=await r.text();if(t&&t.length>200)return t;}
+  }catch{}}
+  return null;
+}
+const stripTagsF=s=>(s||'').replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(+n)).replace(/\s+/g,' ').trim();
+// deep-link builders (always work — open the board pre-filled)
+const BOARDS={
+  jobsch:{label:'jobs.ch',link:(q,c)=>'https://www.jobs.ch/en/vacancies/?term='+encodeURIComponent(q||'')+(c?'&location='+encodeURIComponent(c):'')},
+  jobup:{label:'jobup.ch',link:(q,c)=>'https://www.jobup.ch/en/jobs/?term='+encodeURIComponent(q||'')+(c?'&location='+encodeURIComponent(c):'')},
+  jobindex:{label:'Jobindex',link:(q)=>'https://www.jobindex.dk/jobsoegning?q='+encodeURIComponent(q||'')},
+  jobbank:{label:'Jobbank',link:(q)=>'https://www.jobbank.dk/job?key='+encodeURIComponent(q||'')},
+};
+async function jobschFetch(kws,cf,age,base,src){
+  const q=kws[0]||'',loc=(cf&&cf[0])||'';
+  const html=await proxyFetch(base+'/en/vacancies/?term='+encodeURIComponent(q)+(loc?'&location='+encodeURIComponent(loc):''));
+  if(!html)return [];const out=[];
+  for(const chunk of html.split(/data-cy="job-link"/).slice(1,45)){
+    const id=(chunk.match(/\/detail\/([0-9a-f-]{20,})/i)||[])[1];const title=(chunk.match(/\btitle="([^"]*)"/)||[])[1];if(!id||!title)continue;
+    if(!qMatchAny(title,kws))continue;
+    const href=chunk.match(/href="(\/[a-z]{2}\/[^"]*\/detail\/[^"]+)"/i);
+    const caps=[...chunk.matchAll(/<p class="([^"]*textStyle_caption1[^"]*)">([^<]+)<\/p>/g)].map(m=>({cls:m[1],t:m[2].trim()}));
+    const company=(caps.find(c=>c.cls.includes('fw_bold'))||{}).t||null;
+    const plain=caps.filter(c=>!c.cls.includes('max-w_[min-content]')&&!c.cls.includes('fw_bold')&&!c.cls.includes('c_black'));
+    out.push({id:'ch'+id,title:stripTagsF(title),company,location:(plain[0]||{}).t||loc,date:null,url:href?base+href[1].replace(/&amp;/g,'&'):base+'/en/vacancies/detail/'+id+'/',source:src,city:(plain[0]||{}).t||loc,content:''});
+  }
+  return out;
+}
+async function jobindexFetch(kws,cf,age){
+  let html=await proxyFetch('https://www.jobindex.dk/jobsoegning?q='+encodeURIComponent(kws[0]||''));if(!html)return [];
+  const vals=html.match(/"html":"((?:\\.|[^"\\])*)"/g);
+  if(vals){const cards=[];for(const raw of vals){try{const d=JSON.parse(raw.slice(7));if(typeof d==='string'&&d.includes('jobad-wrapper-'))cards.push(d);}catch{}}if(cards.length)html=cards.join('\n');}
+  const out=[],re=/<div[^>]+id="jobad-wrapper-(h\d+|r\d+)"[^>]*>([\s\S]*?)(?=<div[^>]+id="jobad-wrapper-|$)/g;let m;
+  while((m=re.exec(html))!==null){const card=m[2];
+    const tm=card.match(/<h4[^>]*>[\s\S]*?<[Aa][^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/[Aa]>/i);if(!tm)continue;
+    const title=stripTagsF(tm[2]);if(!title||!qMatchAny(title,kws))continue;
+    const ja=card.match(/href="(https:\/\/www\.jobindex\.dk\/jobannonce\/[^"]+)"/);
+    const cs=card.match(/class="jix-toolbar-top__company"[^>]*>([\s\S]*?)<\/div>/i);let company=null;if(cs){const cl=cs[1].match(/<[Aa][^>]+>([\s\S]*?)<\/[Aa]>/i);if(cl)company=stripTagsF(cl[1]);}
+    const lm=card.match(/<span[^>]+class="jix_robotjob--area"[^>]*>([\s\S]*?)<\/span>/i);
+    const dm=card.match(/<time datetime="([^"]+)"/);const date=dm?dm[1].slice(0,10):null;if(!within(date,age))continue;
+    out.push({id:'ji'+m[1],title,company,location:lm?stripTagsF(lm[1]):null,date,url:ja?ja[1]:'https://www.jobindex.dk/jobannonce/'+m[1],source:'Jobindex (DK)',city:lm?stripTagsF(lm[1]):'',content:''});
+  }
+  return out;
+}
+async function jobbankFetch(kws,cf,age){
+  const xml=await proxyFetch('https://jobbank.dk/job/rss/?key='+encodeURIComponent(kws[0]||''));if(!xml)return [];
+  let doc;try{doc=new DOMParser().parseFromString(xml,'text/xml');}catch{return [];}const out=[];
+  doc.querySelectorAll('item').forEach(it=>{
+    const title=(it.querySelector('title')||{}).textContent||'',link=(it.querySelector('link')||{}).textContent||'';
+    if(!title||!qMatchAny(title,kws))return;
+    const desc=(it.querySelector('description')||{}).textContent||'',pub=(it.querySelector('pubDate')||{}).textContent||'';
+    let company='',loc='';const h=desc.indexOf(' hos ');if(h>=0){let rest=desc.slice(h+5);const par=rest.indexOf(' (');if(par>=0)rest=rest.slice(0,par);const cm=rest.lastIndexOf(', ');if(cm>=0){company=rest.slice(0,cm);loc=rest.slice(cm+2);}else company=rest;}
+    if(pub&&!within(pub,age))return;
+    out.push({id:'jb'+link,title:stripTagsF(title),company:company||null,location:loc||null,date:pub?new Date(pub).toISOString().slice(0,10):null,url:link,source:'Jobbank (DK)',city:loc,content:desc});
+  });
+  return out;
+}
+const FETCHERS={greenhouse:ghSearch,lever:leverSearch,ashby:ashbySearch,remotive:remotiveSearch,arbeitnow:arbeitnowSearch,
+  jobsch:(k,c,a)=>jobschFetch(k,c,a,'https://www.jobs.ch','jobs.ch'),jobup:(k,c,a)=>jobschFetch(k,c,a,'https://www.jobup.ch','jobup.ch'),jobindex:jobindexFetch,jobbank:jobbankFetch};
 async function browserSearch(kws,cf,age,sel){
   const status={};
   const jobs=(await Promise.all(sel.filter(s=>FETCHERS[s]).map(async s=>{
@@ -443,8 +517,9 @@ async function go(){
   if(!sel.length){$('#status').textContent='Pick at least one source to search.';return;}
   const btn=$('#go');btn.disabled=true;btn.textContent='Searching…';
   $('#status').innerHTML='<span class="spin"></span> searching…';$('#count').textContent='';$('#resPanel').classList.add('hide');
-  const browserSel=sel.filter(s=>CFG.browser.includes(s));
-  const serverSel=sel.filter(s=>!CFG.browser.includes(s)); // linkedin + local boards (need backend)
+  // hosted: run everything we have a browser fetcher for (incl. proxied boards). local: boards go to the reliable CLIs.
+  const browserSel=sel.filter(s=>FETCHERS[s]&&(MODE!=='local'||CFG.browser.includes(s)));
+  const serverSel=MODE==='local'?sel.filter(s=>!CFG.browser.includes(s)):[]; // LinkedIn + Swiss/Danish board CLIs
   // CLIs take a single query string; use the first ticked keyword (or a profile role)
   const serverRole=kws[0]||(P.roles&&P.roles[0])||'', serverDays=Math.max(1,Math.ceil(age/1440));
   let results=[],status={};
