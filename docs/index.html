@@ -89,8 +89,11 @@ a.title{color:var(--fg);text-decoration:none;font-weight:600}a.title:hover{color
     </div>
 
     <div class="step" data-s="4">
-      <label>Which cities do you want to save?</label><div class="grid" id="o-cities"></div>
-      <div class="help">You can still search any city in the world later.</div>
+      <label>🏠 Where have you lived / studied / worked? <span class="mut">(your background — shown on your profile)</span></label>
+      <div class="tagbox" id="o-bgbox"><input id="o-bginput" placeholder="e.g. Milan, Helsinki, Tokyo… press Enter"></div>
+      <label style="margin-top:16px">🎯 Where do you want to work? <span class="mut">(your search area — pick cities, includes Remote)</span></label>
+      <div class="grid" id="o-cities"></div>
+      <div class="help">Background places give the tool context; target cities are what it searches. You can still search any city later.</div>
     </div>
 
     <div class="step" data-s="5">
@@ -204,14 +207,14 @@ function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>'
 // ============ Onboarding ============
 let step=0, draft; const STEPS=6;
 function startOnb(){
-  draft=P?JSON.parse(JSON.stringify(P)):{name:'',level:'early',roles:[],skills:[],cities:[],notes:'',docs:[]};
-  draft.skills=draft.skills||[]; draft.docs=draft.docs||[];
+  draft=P?JSON.parse(JSON.stringify(P)):{name:'',level:'early',roles:[],skills:[],cities:[],background:[],notes:'',docs:[]};
+  draft.skills=draft.skills||[]; draft.docs=draft.docs||[]; draft.background=draft.background||[];
   step=0; $('#app').classList.add('hide'); $('#onb').classList.remove('hide');
   $('#dots').innerHTML=Array.from({length:STEPS},(_,i)=>'<div class="dot" id="dot'+i+'"></div>').join('');
   $('#o-name').value=draft.name||'';
   $('#o-level').innerHTML=LEVELS.map(([v,l])=>'<label class="chip'+(draft.level===v?' sel':'')+'" data-lv="'+v+'"><input type="radio" '+(draft.level===v?'checked':'')+'>'+l+'</label>').join('');
   $('#o-notes').value=draft.notes||'';
-  tags('o-rolebox','roles'); tags('o-skillbox','skills'); renderFiles();
+  tags('o-rolebox','roles'); tags('o-skillbox','skills'); tags('o-bgbox','background'); renderFiles();
   $('#o-cities').innerHTML=Object.keys(CFG.cities).map(c=>'<label class="chip'+(draft.cities.includes(c)?' sel':'')+'" data-city="'+esc(c)+'"><input type="checkbox" '+(draft.cities.includes(c)?'checked':'')+'>'+esc(c)+'</label>').join('');
   showStep();
 }
@@ -242,7 +245,7 @@ $('#o-back').onclick=()=>{if(step>0){step--;showStep();}};
 $('#o-next').onclick=()=>{
   if(step===1)draft.name=$('#o-name').value.trim();
   if(step===3){[['o-roleinput','roles','o-rolebox'],['o-skillinput','skills','o-skillbox']].forEach(([id,f,box])=>{const v=$('#'+id).value.trim();if(v&&!draft[f].map(x=>x.toLowerCase()).includes(v.toLowerCase())){draft[f].push(v);tags(box,f);$('#'+id).value='';}});}
-  if(step===4&&!draft.cities.length){alert('Pick at least one city.');return;}
+  if(step===4){const v=$('#o-bginput').value.trim();if(v&&!draft.background.map(x=>x.toLowerCase()).includes(v.toLowerCase())){draft.background.push(v);tags('o-bgbox','background');$('#o-bginput').value='';}if(!draft.cities.length){alert('Pick at least one target city.');return;}}
   if(step<STEPS-1){step++;showStep();return;}
   draft.notes=$('#o-notes').value.trim();
   // strip file objects (can't serialize) — keep metadata
@@ -285,19 +288,33 @@ function openApp(){
   $('#loc').value=P.cities.length>1?'All my cities':(P.cities[0]||'🌍 Worldwide');
   renderProfile();renderKeywords();renderSrc();syncSL();
 }
-// ---- profile panel (top) ----
+// ---- derive the target role from the user's own data ----
+function primaryRole(){
+  if(P.role)return P.role;
+  if(P.roles&&P.roles.length)return P.roles[0].replace(/\b\w/g,c=>c.toUpperCase());
+  const s=(P.skills||[]).join(' ').toLowerCase();
+  if(/service design/.test(s))return 'Service Designer';
+  if(/product design|product/.test(s))return 'Product Designer';
+  if(/ux|user research/.test(s))return 'UX Designer';
+  if(/strateg/.test(s))return 'Design Strategist';
+  return 'Designer';
+}
+const docIcon=n=>{n=(n||'').toLowerCase();return /\.pdf$/.test(n)?'📕':/\.docx?$/.test(n)?'📘':/\.(png|jpe?g|gif|webp)$/.test(n)?'🖼️':'📄';};
+// ---- comprehensive profile panel (top) ----
 function renderProfile(){
   const chip=t=>'<span class="chipro">'+esc(t)+'</span>';
   const lvl=(LEVELS.find(l=>l[0]===P.level)||['','—'])[1];
   const none='<span class="mut">—</span>';
+  const bg=P.background||[], targets=P.cities||[], roles=P.roles||[];
   const rows=[
     ['🧑 Name', P.name?esc(P.name):none],
+    ['🎯 Target role', '<b>'+esc(primaryRole())+'</b>'+(roles.length>1?' <span class="mut sm">· also open to: '+esc(roles.slice(1).join(', '))+'</span>':'')],
     ['🎓 Level', esc(lvl)],
-    ['🎯 Roles', (P.roles||[]).length?P.roles.map(chip).join(' '):'<span class="mut">none yet</span>'],
-    ['🧩 Skills', (P.skills||[]).length?P.skills.map(chip).join(' '):'<span class="mut">none yet</span>'],
-    ['📍 Cities', (P.cities||[]).length?P.cities.map(chip).join(' '):none],
+    ['🧩 Skills', (P.skills||[]).length?P.skills.map(chip).join(' '):'<span class="mut">none yet — extract them from your CV</span>'],
+    ['🏠 Background', bg.length?bg.map(chip).join(' '):'<span class="mut">where you\'ve lived / studied / worked</span>'],
+    ['🎯 Target cities', targets.length?targets.map(chip).join(' '):none],
   ];
-  if((P.docs||[]).length)rows.push(['📎 Documents', P.docs.map(d=>chip('📄 '+d.name)).join(' ')]);
+  if((P.docs||[]).length)rows.push(['📎 Documents', P.docs.map(d=>'<span class="chipro">'+docIcon(d.name)+' '+esc(d.name)+(d.size?' <span class="mut sm">'+Math.round(d.size/1024)+' KB</span>':'')+'</span>').join(' ')]);
   if(P.notes)rows.push(['📝 Notes', esc(P.notes)]);
   $('#profileBody').innerHTML=rows.map(([k,v])=>'<div class="prow"><span class="k">'+k+'</span><span>'+v+'</span></div>').join('');
 }
@@ -357,7 +374,7 @@ async function ashbySearch(kws,cf,age){const out=[];
 async function remotiveSearch(kws,cf,age){const out=[]; // remote by nature — ignore city filter
   try{const r=await fetch('https://remotive.com/api/remote-jobs?limit=200');if(!r.ok)return out;const o=await r.json();
     for(const j of o.jobs||[]){if(!qMatchAny(j.title,kws))continue;const loc=j.candidate_required_location||'Remote';if(!within(j.publication_date,age))continue;
-      out.push({id:'rm'+j.id,title:j.title,company:j.company_name||'',location:loc,date:(j.publication_date||'').slice(0,10)||null,url:j.url,source:'Remotive',city:loc,content:j.description||''});}}catch{}
+      out.push({id:'rm'+j.id,title:j.title,company:j.company_name||'',location:loc,date:(j.publication_date||'').slice(0,10)||null,url:j.url,source:'Remotive',city:loc,content:j.description||'',salary:j.salary||''});}}catch{}
   return out;}
 async function arbeitnowSearch(kws,cf,age){const out=[];
   try{for(let pg=1;pg<=2;pg++){const r=await fetch('https://www.arbeitnow.com/api/job-board-api?page='+pg);if(!r.ok)break;const o=await r.json();
@@ -423,6 +440,54 @@ function alignment(job){
   return {pct,role:Math.round(role*100),skill:Math.round(skill*100),lvl:Math.round(lvl*100),matched,missing:skills.filter(s=>!matched.includes(s))};
 }
 function pctCls(p){return p>=70?'p-hi':p>=45?'p-med':'p-low'}
+// ============ Per-job insight: skills gap · salary · CV advice ============
+const SKILL_LEXICON=['product design','service design','ux design','ui design','interaction design','visual design','design strategy','design systems','design sprints','user research','usability testing','wireframing','prototyping','figma','sketch','adobe xd','adobe creative cloud','photoshop','illustrator','after effects','information design','accessibility','wcag','design thinking','journey mapping','storytelling','art direction','creative direction','illustration','motion design','branding','typography','product management','roadmap','stakeholder management','agile','scrum','a/b testing','analytics','data analysis','user interviews','innovation management','business development','strategy','facilitation','workshops','javascript','typescript','react','html','css','three.js','p5.js','python','sql','front-end','web development','creative coding','ar','vr','llm','generative ai','prompt engineering','human-ai interaction','machine learning','api','jira','notion','miro','confluence','webflow','framer','procreate','vs code'];
+function jobSkills(job){const hay=((job.title||'')+' '+(job.content||'')).toLowerCase();return SKILL_LEXICON.filter(s=>hay.includes(s));}
+function skillGap(job){const need=jobSkills(job);const mine=(P.skills||[]).map(s=>s.toLowerCase());
+  const have=need.filter(s=>mine.some(m=>m.includes(s)||s.includes(m)));
+  return {need,have,lack:need.filter(s=>!have.includes(s))};}
+function region(loc){loc=(loc||'').toLowerCase();
+  if(/san francisco|new york|\bny\b|\bca\b|united states|\busa?\b|remote \(us/.test(loc))return 'us';
+  if(/zurich|zürich|geneva|genève|basel|bern|switzerland/.test(loc))return 'ch';
+  if(/london|united kingdom|\buk\b/.test(loc))return 'uk';
+  if(/singapore|hong kong|shanghai|seoul|korea|china|japan|tokyo/.test(loc))return 'asia';
+  if(/remote|anywhere|worldwide/.test(loc))return 'remote';
+  return 'eu';}
+function roleFamily(t){t=(t||'').toLowerCase();if(/engineer|developer|programmer/.test(t))return 'eng';if(/product manager|program manager|\bpm\b/.test(t))return 'pm';if(/data|analyst|scientist/.test(t))return 'data';return 'design';}
+function levelOf(t){t=(t||'').toLowerCase();if(/senior|sr\.?|lead|principal|staff|head|director|manager|chief|vp/.test(t))return 'senior';if(/junior|jr\.?|graduate|intern|entry|trainee|associate|apprentice/.test(t))return 'junior';return 'mid';}
+const SAL_BASE={design:{junior:[35,52],mid:[55,80],senior:[85,120]},pm:{junior:[45,65],mid:[70,100],senior:[110,160]},eng:{junior:[45,70],mid:[75,110],senior:[115,170]},data:{junior:[42,62],mid:[68,98],senior:[105,150]}};
+const SAL_MULT={us:1.9,ch:1.85,uk:1.25,eu:1.0,asia:1.15,remote:1.1},SAL_CUR={us:'$',ch:'CHF ',uk:'£',eu:'€',asia:'€',remote:'€'};
+function salaryEst(job){const fam=roleFamily(job.title),lv=levelOf(job.title),reg=region(job.location||job.city);
+  const b=(SAL_BASE[fam]||SAL_BASE.design)[lv],m=SAL_MULT[reg]||1;
+  const lo=Math.round(b[0]*m/5)*5,hi=Math.round(b[1]*m/5)*5;return {lo,hi,cur:SAL_CUR[reg]||'€',fam,lv,reg,mid:(lo+hi)/2};}
+function parseListed(job){const s=(job.salary||'')+' '+(((job.content||'').match(/(salary|compensation|pay|€|\$|£)[^.]{0,90}/i)||[''])[0]);
+  const nums=(s.match(/\b\d{2,3}[ ]?[kK]\b|\b\d{2,3},?\d{3}\b/g)||[]).map(x=>{const n=+x.replace(/[^\d]/g,'');return /k/i.test(x)?n:Math.round(n/1000);}).filter(n=>n>=20&&n<=400);
+  return nums.length?{lo:Math.min(...nums),hi:Math.max(...nums)}:null;}
+function cvAdvice(job){const g=skillGap(job),a=[],title=job.title||'this role',jl=levelOf(job.title),reg=region(job.location||job.city);
+  a.push('Mirror the exact title "<b>'+esc(title)+'</b>" in your CV headline & summary so ATS and recruiters match you instantly.');
+  const strong=(P.skills||[]).filter(s=>g.have.some(h=>h.includes(s.toLowerCase())||s.toLowerCase().includes(h))).slice(0,4);
+  if(strong.length)a.push('Lead with the strengths this role wants: <b>'+esc(strong.join(', '))+'</b> — put them in your top bullets.');
+  if(g.lack.length)a.push('Close the gaps: <b>'+esc(g.lack.slice(0,4).join(', '))+'</b> — add adjacent experience, or note you\'re actively upskilling (e.g. a project built with Claude Code).');
+  if(jl==='senior'&&P.level==='early')a.push('This role skews senior — emphasize scope & ownership (leadership, end-to-end projects, stakeholder work) to bridge the seniority gap.');
+  if(jl==='junior'||jl==='mid'&&P.level==='early')a.push('Good early-career fit — put your degree, awards, and hands-on projects up top.');
+  if(reg!=='eu'&&reg!=='remote')a.push('Outside the EU — address work authorization / relocation for <b>'+esc(job.city||job.location||'this location')+'</b> up front in your cover letter.');
+  a.push('Quantify impact — users served, team size, interviews run, prototypes shipped. Numbers beat adjectives.');
+  return a;}
+function openJobDetail(job){if(!job.align)job.align=alignment(job);
+  const g=skillGap(job),sal=salaryEst(job),listed=parseListed(job),chip=arr=>arr.length?arr.map(s=>'<span class="chipro">'+esc(s)+'</span>').join(' '):'<span class="mut">—</span>';
+  const band=()=>{if(!listed)return '<span class="mut sm">No salary listed — estimate only.</span>';const lm=(listed.lo+listed.hi)/2;
+    const rel=lm<sal.mid*0.9?'<span class="pct p-low" style="color:#fff">below usual</span>':lm>sal.mid*1.1?'<span class="pct p-hi">above usual</span>':'<span class="pct p-med">usual range</span>';
+    return 'Listed <b>'+sal.cur+listed.lo+'k–'+listed.hi+'k</b> · '+rel;};
+  let h='<h3>'+esc(job.title||'Job')+'</h3><div class="co" style="margin:-6px 0 14px">'+esc(job.company||'')+(job.location?' · '+esc(job.location):'')+' · <span class="src">'+esc(job.source)+'</span></div>';
+  h+='<div class="prow"><span class="k">🎯 Alignment</span><span><span class="pct '+pctCls(job.align.pct)+'">'+job.align.pct+'%</span> &nbsp;role '+job.align.role+'% · skills '+job.align.skill+'% · level '+job.align.lvl+'%</span></div>';
+  h+='<div class="prow"><span class="k">✅ You have</span><span>'+chip(g.have)+'</span></div>';
+  h+='<div class="prow"><span class="k">⚠️ You lack</span><span>'+(g.lack.length?g.lack.map(s=>'<span class="chipro" style="border-color:var(--med)">'+esc(s)+'</span>').join(' '):'<span style="color:var(--hi)">nothing major — strong match!</span>')+'</span></div>';
+  h+='<div class="prow"><span class="k">💰 Est. salary</span><span><b>'+sal.cur+sal.lo+'k – '+sal.cur+sal.hi+'k</b> <span class="mut sm">/yr · '+sal.lv+' '+sal.fam+' · '+sal.reg.toUpperCase()+' · rough estimate</span><br>'+band()+'</span></div>';
+  h+='<div class="prow"><span class="k">📝 CV advice</span><span><ul style="margin:0;padding-left:18px">'+cvAdvice(job).map(x=>'<li style="margin:5px 0">'+x+'</li>').join('')+'</ul></span></div>';
+  h+='<div class="linkline" style="margin-top:14px"><a class="btn" href="'+esc(job.url)+'" target="_blank" rel="noopener">Open posting ↗</a> <button class="btn ghost" id="starDetail">'+(isSL(job)?'★ Shortlisted':'☆ Add to shortlist')+'</button></div>';
+  modal(h);
+  const sd=$('#starDetail');if(sd)sd.onclick=()=>{if(isSL(job))SL=SL.filter(x=>x.url!==job.url);else SL.push(job);saveSL();sd.textContent=isSL(job)?'★ Shortlisted':'☆ Add to shortlist';render(LASTROWS);};
+}
 function render(rows){
   const p=$('#resPanel'),box=$('#results');
   if(!rows.length){p.classList.remove('hide');box.innerHTML='<div class="empty">No matches. Try a broader role, a longer window, or another city'+(MODE==='static'?'. (Hosted mode searches Greenhouse, Lever, Ashby, Remotive & Arbeitnow live — run locally to add LinkedIn & local boards.)':'.')+'</div>';return;}
@@ -430,21 +495,25 @@ function render(rows){
   $('#count').innerHTML=rows.length+' results · <b>'+good+'</b> strong matches (≥70%)  <button class="iconbtn" id="cmpBtn">⚖ Compare shortlist</button>';
   $('#cmpBtn').onclick=openCompare;
   const multi=new Set(rows.map(r=>r.city)).size>1;
-  let h='<table><thead><tr><th></th><th>Match</th><th>Role</th><th>Company</th>'+(multi?'<th>City</th>':'')+'<th>Location</th><th>Posted</th><th>Source</th></tr></thead><tbody>';
-  for(const r of rows){const on=isSL(r);
+  let h='<div style="overflow-x:auto"><table><thead><tr><th></th><th>Match</th><th>Role</th><th>Company</th>'+(multi?'<th>City</th>':'')+'<th>Location</th><th>💰 Est. salary</th><th>Posted</th><th>Source</th><th></th></tr></thead><tbody>';
+  for(const r of rows){const on=isSL(r);const g=skillGap(r),sal=salaryEst(r);
     h+='<tr><td><span class="star'+(on?' on':'')+'" data-url="'+esc(r.url)+'">'+(on?'★':'☆')+'</span></td>'
       +'<td><span class="pct '+pctCls(r.align.pct)+'" title="role '+r.align.role+'% · skills '+r.align.skill+'%">'+r.align.pct+'%</span></td>'
-      +'<td><a class="title" href="'+esc(r.url)+'" target="_blank" rel="noopener">'+esc(r.title)+'</a></td>'
+      +'<td><a class="title" href="'+esc(r.url)+'" target="_blank" rel="noopener">'+esc(r.title)+'</a>'+(g.lack.length?'<div class="co sm">⚠️ lacks '+g.lack.length+': '+esc(g.lack.slice(0,3).join(', '))+(g.lack.length>3?'…':'')+'</div>':'<div class="sm" style="color:var(--hi)">✓ no major gaps</div>')+'</td>'
       +'<td class="co">'+esc(r.company||'—')+'</td>'+(multi?'<td class="co">'+esc(r.city||'')+'</td>':'')
       +'<td class="co">'+esc((r.location||'—').split('•')[0].slice(0,26))+'</td>'
-      +'<td class="co">'+esc(r.date||'—')+'</td><td><span class="src">'+esc(r.source)+'</span></td></tr>';}
-  box.innerHTML=h+'</tbody></table>';p.classList.remove('hide');
+      +'<td class="co sm">'+sal.cur+sal.lo+'–'+sal.hi+'k</td>'
+      +'<td class="co">'+esc(r.date||'—')+'</td><td><span class="src">'+esc(r.source)+'</span></td>'
+      +'<td><button class="iconbtn" data-detail="'+esc(r.url)+'" title="skills gap · salary · CV advice">💡</button></td></tr>';}
+  box.innerHTML=h+'</tbody></table></div>';p.classList.remove('hide');
 }
-$('#results').onclick=e=>{const st=e.target.closest('.star');if(!st)return;const j=LASTROWS.find(x=>x.url===st.dataset.url);if(!j)return;
+$('#results').onclick=e=>{
+  const d=e.target.closest('[data-detail]');if(d){const j=LASTROWS.find(x=>x.url===d.dataset.detail);if(j)openJobDetail(j);return;}
+  const st=e.target.closest('.star');if(!st)return;const j=LASTROWS.find(x=>x.url===st.dataset.url);if(!j)return;
   if(isSL(j)){SL=SL.filter(x=>x.url!==j.url);st.classList.remove('on');st.textContent='☆';}else{SL.push(j);st.classList.add('on');st.textContent='★';}saveSL();};
 $('#go').onclick=go;$('#loc').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
 function isSL(j){return SL.some(x=>x.url===j.url)}
-function syncSL(){$('#slBtn').textContent='★ Shortlist ('+SL.length+')'}
+function syncSL(){$('#slBtn').textContent='⭐ Shortlist ('+SL.length+')'}
 
 // ============ Compare view ============
 function openCompare(){
