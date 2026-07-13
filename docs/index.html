@@ -57,6 +57,9 @@ a.title{color:var(--fg);text-decoration:none;font-weight:600}a.title:hover{color
 .phead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px}.phead h3{margin:0}
 .prow{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;margin:9px 0}.prow .k{font-size:11.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em;min-width:108px;flex:0 0 108px;font-weight:700}
 .chipro{display:inline-flex;align-items:center;gap:6px;background:var(--in);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:13px;margin:2px 0}
+.isec{margin:20px 0 6px;font-weight:700;font-size:13px;color:var(--acc);border-top:1px solid var(--line);padding-top:14px}.isec:first-of-type{border-top:none;padding-top:0;margin-top:10px}
+label.q{display:block;font-size:13.5px;color:var(--fg);margin:12px 0 5px;font-weight:600;text-transform:none;letter-spacing:0}
+.cta{background:color-mix(in srgb,var(--acc) 10%,transparent);border:1px solid var(--acc);border-radius:10px;padding:10px 13px;margin-bottom:14px;font-size:13.5px}
 </style></head><body>
 <div class="wrap">
   <!-- ONBOARDING -->
@@ -113,7 +116,7 @@ a.title{color:var(--fg);text-decoration:none;font-weight:600}a.title:hover{color
         <button class="iconbtn" id="slBtn">⭐ Shortlist (0)</button>
         <div class="menu"><button class="iconbtn" id="gear">⚙️ Profile</button>
           <div class="pop hide" id="pop">
-            <button data-a="edit">✏️ Edit profile</button><button data-a="links">🔗 Job sites & public sector</button>
+            <button data-a="edit">✏️ Edit profile</button><button data-a="interview">🎤 In-depth interview</button><button data-a="links">🔗 Job sites & public sector</button>
             <button data-a="share">📤 Share (link / QR)</button>
             <button data-a="export">⬇️ Export profile</button><button data-a="import">⬆️ Import profile</button>
             <button data-a="reset">🗑️ Reset</button>
@@ -316,7 +319,21 @@ function renderProfile(){
   ];
   if((P.docs||[]).length)rows.push(['📎 Documents', P.docs.map(d=>'<span class="chipro">'+docIcon(d.name)+' '+esc(d.name)+(d.size?' <span class="mut sm">'+Math.round(d.size/1024)+' KB</span>':'')+'</span>').join(' ')]);
   if(P.notes)rows.push(['📝 Notes', esc(P.notes)]);
-  $('#profileBody').innerHTML=rows.map(([k,v])=>'<div class="prow"><span class="k">'+k+'</span><span>'+v+'</span></div>').join('');
+  // in-depth interview data
+  const iv=P.interview||{}, list=a=>(a||[]).map(chip).join(' ');
+  if((iv.languages||[]).length)rows.push(['🗣️ Languages', list(iv.languages)]);
+  if(iv.workAuth)rows.push(['🛂 Work eligibility', esc(iv.workAuth)]);
+  if((iv.strengths||[]).length)rows.push(['💪 Strengths', list(iv.strengths)]);
+  if(iv.personality)rows.push(['🧠 Personality', esc(iv.personality)]);
+  if(iv.excites)rows.push(['🚀 Excited by', esc(iv.excites)]);
+  if((iv.sectors||[]).length)rows.push(['🏢 Sectors', list(iv.sectors)]);
+  if(iv.salaryMin)rows.push(['💶 Salary target', 'from '+esc(String(iv.salaryMin))+'k / yr']);
+  if(iv.workMode||iv.relocate)rows.push(['📌 Preferences', esc([iv.workMode,iv.relocate].filter(Boolean).join(' · '))]);
+  if((iv.mustHaves||[]).length)rows.push(['✅ Must-haves', list(iv.mustHaves)]);
+  if((iv.dealBreakers||[]).length)rows.push(['⛔ Deal-breakers', list(iv.dealBreakers)]);
+  const cta=Object.keys(iv).length?'':'<div class="cta">🎤 <b><a class="link" id="ivCta" style="cursor:pointer">Take the in-depth interview</a></b> — a few questions about how you work, your strengths and goals. It sharpens your matches, salary insight & CV advice.</div>';
+  $('#profileBody').innerHTML=cta+rows.map(([k,v])=>'<div class="prow"><span class="k">'+k+'</span><span>'+v+'</span></div>').join('');
+  const c=$('#ivCta');if(c)c.onclick=interviewModal;
 }
 // ---- keyword suggestions (tick/untick; nothing is forced) ----
 function renderKeywords(){
@@ -467,6 +484,8 @@ function cvAdvice(job){const g=skillGap(job),a=[],title=job.title||'this role',j
   a.push('Mirror the exact title "<b>'+esc(title)+'</b>" in your CV headline & summary so ATS and recruiters match you instantly.');
   const strong=(P.skills||[]).filter(s=>g.have.some(h=>h.includes(s.toLowerCase())||s.toLowerCase().includes(h))).slice(0,4);
   if(strong.length)a.push('Lead with the strengths this role wants: <b>'+esc(strong.join(', '))+'</b> — put them in your top bullets.');
+  const ivS=(P.interview&&P.interview.strengths)||[];
+  if(ivS.length)a.push('Anchor your CV in your core strengths: <b>'+esc(ivS.slice(0,4).join(', '))+'</b>.');
   if(g.lack.length)a.push('Close the gaps: <b>'+esc(g.lack.slice(0,4).join(', '))+'</b> — add adjacent experience, or note you\'re actively upskilling (e.g. a project built with Claude Code).');
   if(jl==='senior'&&P.level==='early')a.push('This role skews senior — emphasize scope & ownership (leadership, end-to-end projects, stakeholder work) to bridge the seniority gap.');
   if(jl==='junior'||jl==='mid'&&P.level==='early')a.push('Good early-career fit — put your degree, awards, and hands-on projects up top.');
@@ -482,7 +501,9 @@ function openJobDetail(job){if(!job.align)job.align=alignment(job);
   h+='<div class="prow"><span class="k">🎯 Alignment</span><span><span class="pct '+pctCls(job.align.pct)+'">'+job.align.pct+'%</span> &nbsp;role '+job.align.role+'% · skills '+job.align.skill+'% · level '+job.align.lvl+'%</span></div>';
   h+='<div class="prow"><span class="k">✅ You have</span><span>'+chip(g.have)+'</span></div>';
   h+='<div class="prow"><span class="k">⚠️ You lack</span><span>'+(g.lack.length?g.lack.map(s=>'<span class="chipro" style="border-color:var(--med)">'+esc(s)+'</span>').join(' '):'<span style="color:var(--hi)">nothing major — strong match!</span>')+'</span></div>';
-  h+='<div class="prow"><span class="k">💰 Est. salary</span><span><b>'+sal.cur+sal.lo+'k – '+sal.cur+sal.hi+'k</b> <span class="mut sm">/yr · '+sal.lv+' '+sal.fam+' · '+sal.reg.toUpperCase()+' · rough estimate</span><br>'+band()+'</span></div>';
+  const iv=P.interview||{};
+  const tgt=iv.salaryMin?(sal.mid<+iv.salaryMin?' &nbsp;<span class="pct p-low" style="color:#fff">below your '+esc(String(iv.salaryMin))+'k target</span>':' &nbsp;<span class="pct p-hi">meets your '+esc(String(iv.salaryMin))+'k target</span>'):'';
+  h+='<div class="prow"><span class="k">💰 Est. salary</span><span><b>'+sal.cur+sal.lo+'k – '+sal.cur+sal.hi+'k</b> <span class="mut sm">/yr · '+sal.lv+' '+sal.fam+' · '+sal.reg.toUpperCase()+' · rough estimate</span><br>'+band()+tgt+'</span></div>';
   h+='<div class="prow"><span class="k">📝 CV advice</span><span><ul style="margin:0;padding-left:18px">'+cvAdvice(job).map(x=>'<li style="margin:5px 0">'+x+'</li>').join('')+'</ul></span></div>';
   h+='<div class="linkline" style="margin-top:14px"><a class="btn" href="'+esc(job.url)+'" target="_blank" rel="noopener">Open posting ↗</a> <button class="btn ghost" id="starDetail">'+(isSL(job)?'★ Shortlisted':'☆ Add to shortlist')+'</button></div>';
   modal(h);
@@ -561,6 +582,7 @@ $('#gear').onclick=()=>$('#pop').classList.toggle('hide');
 document.addEventListener('click',e=>{if(!e.target.closest('.menu'))$('#pop').classList.add('hide');});
 $('#pop').onclick=e=>{const a=e.target.dataset.a;if(!a)return;$('#pop').classList.add('hide');
   if(a==='edit')startOnb();
+  if(a==='interview')interviewModal();
   if(a==='reset'){if(confirm('Reset your profile?')){localStorage.removeItem(KEY);P=null;startOnb();}}
   if(a==='export')dl('aijobsearch-profile.json',JSON.stringify(P,null,2));
   if(a==='import')$('#importFile').click();
@@ -574,6 +596,64 @@ function ub64u(s){s=s.replace(/-/g,'+').replace(/_/g,'/');return decodeURICompon
 function shareModal(){const link=location.origin+location.pathname+'#p='+b64u(JSON.stringify(P));const qr='https://api.qrserver.com/v1/create-qr-code/?size=210x210&data='+encodeURIComponent(link);
   modal('<h3>📤 Share your profile</h3><p class="mut">Send this link to anyone using AI Job Search — opening it loads your setup. The app itself uploads nothing.</p><div class="linkline"><input id="shareLink" value="'+esc(link)+'" readonly><button class="btn" id="cpLink">Copy</button></div><p class="help">Optional QR (rendered by a public QR image service):</p><img alt="QR" style="border-radius:12px;background:#fff;padding:6px" src="'+esc(qr)+'">');
   $('#cpLink').onclick=()=>{const i=$('#shareLink');i.select();document.execCommand('copy');$('#cpLink').textContent='Copied ✓';};}
+
+// ============ In-depth interview (comprehensive, in-app) ============
+const IV_SECTIONS=[
+  {t:'🌍 Identity & work eligibility',fields:[
+    {k:'languages',type:'list',label:'Languages you speak (one per line, e.g. "Italian — Native")'},
+    {k:'workAuth',type:'text',label:'Work authorization / visa needs (which regions can you work in without sponsorship?)'},
+    {k:'availability',type:'text',label:'Current status & availability (e.g. employed, open to grad programs / internships / junior roles)'},
+  ]},
+  {t:'🏆 Experience highlights',fields:[
+    {k:'achievements',type:'list',label:'Your proudest projects & achievements (one per line)',hint:'These feed your CV advice and interview stories — quantify where you can.'},
+  ]},
+  {t:'🧠 How you work (behavioral)',fields:[
+    {k:'thrive',type:'textarea',label:'What environments do you thrive in?'},
+    {k:'drains',type:'textarea',label:'What drains your energy at work?'},
+    {k:'teamwork',type:'textarea',label:'How do you prefer to work in a team?'},
+    {k:'decisions',type:'text',label:'Decision style — quick & iterative, or deliberate?'},
+    {k:'communication',type:'text',label:'Communication style?'},
+    {k:'personality',type:'text',label:'Personality type (MBTI / DISC / StrengthsFinder), if you know it'},
+  ]},
+  {t:'💪 Strengths & growth',fields:[
+    {k:'strengths',type:'list',label:'Your top strengths (one per line)'},
+    {k:'growth',type:'textarea',label:'Areas you want to grow into'},
+  ]},
+  {t:'🚀 Goals & motivation',fields:[
+    {k:'excites',type:'textarea',label:'What excites you most about your next role?'},
+    {k:'sectors',type:'list',label:'Target sectors / industries (one per line)'},
+    {k:'companies',type:'list',label:'Dream companies to watch (one per line)'},
+  ]},
+  {t:'⚖️ Preferences & deal-breakers',fields:[
+    {k:'workMode',type:'select',label:'Preferred work mode',options:['','Remote','Hybrid','On-site','Flexible']},
+    {k:'relocate',type:'text',label:'Open to relocation? Where?'},
+    {k:'salaryMin',type:'number',label:'Minimum salary expectation (in k / year — used to flag under-paying roles)'},
+    {k:'mustHaves',type:'list',label:'Must-haves (one per line)'},
+    {k:'dealBreakers',type:'list',label:'Deal-breakers (one per line)'},
+  ]},
+];
+function interviewModal(){
+  const iv=P.interview||{};
+  const field=f=>{const v=iv[f.k],val=Array.isArray(v)?v.join('\n'):(v==null?'':String(v));
+    let el;
+    if(f.type==='textarea'||f.type==='list')el='<textarea rows="'+(f.type==='list'?3:2)+'" data-k="'+f.k+'" data-list="'+(f.type==='list'?1:0)+'">'+esc(val)+'</textarea>';
+    else if(f.type==='number')el='<input type="number" min="0" data-k="'+f.k+'" value="'+esc(val)+'">';
+    else if(f.type==='select')el='<select data-k="'+f.k+'">'+f.options.map(o=>'<option'+(o===val?' selected':'')+'>'+esc(o)+'</option>').join('')+'</select>';
+    else el='<input type="text" data-k="'+f.k+'" value="'+esc(val)+'">';
+    return '<label class="q">'+f.label+'</label>'+el+(f.hint?'<div class="help">'+f.hint+'</div>':'');};
+  let h='<h3>🎤 In-depth interview</h3><p class="mut sm">Optional but powerful — the more you answer, the sharper your matches, salary insight and CV advice become. Answer in your own words; nothing is required. Everything stays on your device.</p>';
+  h+=IV_SECTIONS.map(s=>'<div class="isec">'+s.t+'</div>'+s.fields.map(field).join('')).join('');
+  h+='<div class="row" style="margin-top:20px"><button class="btn ghost" id="ivCancel">Close</button><button class="btn" id="ivSave">Save interview ✓</button></div>';
+  modal(h);
+  $('#ivCancel').onclick=()=>$('#overlay').classList.add('hide');
+  $('#ivSave').onclick=()=>{const out={};
+    $('#mbody').querySelectorAll('[data-k]').forEach(el=>{const k=el.dataset.k;let val=el.value;
+      if(el.dataset.list==='1')val=val.split('\n').map(x=>x.trim()).filter(Boolean);
+      else if(el.type==='number')val=val?+val:'';
+      else val=val.trim();
+      if(Array.isArray(val)?val.length:val!=='')out[k]=val;});
+    P.interview=out;save();renderProfile();$('#overlay').classList.add('hide');};
+}
 function linksModal(){
   const sec=(t,arr)=>'<h3 style="margin-top:16px">'+t+'</h3><div class="chips">'+arr.map(([n,u])=>'<a class="chip link" href="'+u+'" target="_blank" rel="noopener">'+esc(n)+' ↗</a>').join('')+'</div>';
   modal('<h3>🌐 More job sites</h3><p class="mut sm">These sites block automated search, so open them directly. Your role & city are ready to paste.</p>'+sec('🏛 Public sector',CFG.publicSector)+sec('📍 Local boards',CFG.local));
