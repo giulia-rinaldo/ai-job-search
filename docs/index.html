@@ -550,6 +550,19 @@ const COUNTRY={
   'South Korea':{region:'asia',lang:'English + Korean',col:74},China:{region:'asia',lang:'English + Mandarin',col:60},Remote:{region:'remote',lang:'English',col:75},
 };
 const COUNTRY_OF={Helsinki:'Finland',Copenhagen:'Denmark',Amsterdam:'Netherlands',Zurich:'Switzerland',Geneva:'Switzerland',Basel:'Switzerland',Bern:'Switzerland',Paris:'France',Brussels:'Belgium',Berlin:'Germany',London:'United Kingdom',Seoul:'South Korea',Singapore:'Singapore','Hong Kong':'Hong Kong',Shanghai:'China','New York':'United States','San Francisco':'United States',Milan:'Italy',Remote:'Remote'};
+const ISO2={Italy:'IT',Germany:'DE',Netherlands:'NL',Finland:'FI',France:'FR',Belgium:'BE',Denmark:'DK',Switzerland:'CH','United Kingdom':'GB','United States':'US',Singapore:'SG','Hong Kong':'HK','South Korea':'KR',China:'CN'};
+// live cost-of-living proxy: World Bank price level = PPP factor ÷ market exchange rate (US=1.00), CORS-open. Falls back to null.
+async function priceLevel(countryName){
+  const iso=ISO2[countryName];if(!iso)return null;
+  const one=code=>fetch('https://api.worldbank.org/v2/country/'+iso+'/indicator/'+code+'?format=json&mrnev=1').then(r=>r.json()).then(j=>{const v=(j[1]||[]).find(x=>x&&x.value!=null);return v?v.value:null;}).catch(()=>null);
+  try{const [ppp,fx]=await Promise.race([Promise.all([one('PA.NUS.PPP'),one('PA.NUS.FCRF')]),new Promise(r=>setTimeout(()=>r([null,null]),6500))]);
+    if(ppp&&fx&&fx!==0)return ppp/fx;}catch{}
+  return null;
+}
+// AI (genuine generation) — available only when the local server has an API key
+const AI=()=>MODE==='local'&&SERVER&&SERVER.ai;
+async function aiCall(task,payload){const r=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task,profile:P,...payload})});const d=await r.json();if(d.error)throw new Error(d.error);return d.text||'';}
+function fmtAI(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^#+\s*(.+)$/gm,'<b>$1</b>').replace(/\n/g,'<br>');}
 function salaryByRegion(fam,lv,reg){const b=(SAL_BASE[fam]||SAL_BASE.design)[lv]||SAL_BASE.design.mid;const m=SAL_MULT[reg]||1;const lo=Math.round(b[0]*m/5)*5,hi=Math.round(b[1]*m/5)*5;return {lo,hi,mid:(lo+hi)/2};}
 function improveHint(fam){return {design:'Figma / design systems',eng:'React / TypeScript',pm:'roadmap / OKRs',data:'SQL / Python'}[fam]||'the tools the role names';}
 function compatPositions(text){const fams=[['design','Product / UX Designer'],['pm','Product Manager'],['eng','Software Engineer'],['data','Data Analyst']];
@@ -583,7 +596,7 @@ function reportModal(a,role,countryName){
   h+='<div class="salbox"><div class="mut sm">🇮🇹 Italy (home)</div><b>€'+a.homeSal.lo+'k–'+a.homeSal.hi+'k</b><div class="mut sm">/yr estimate</div></div>';
   h+='<div class="salbox tgt"><div class="mut sm">'+esc(countryName)+'</div><b>'+cur+a.tgtSal.lo+'k–'+cur+a.tgtSal.hi+'k</b><div class="mut sm">median '+cur+Math.round(a.tgtSal.mid)+'k</div></div>';
   h+='<div class="salbox '+(a.diff>=0?'up':'')+'"><div class="mut sm">vs Italy</div><b style="color:'+(a.diff>=0?'var(--med)':'var(--low)')+'">'+(a.diff>=0?'+':'')+a.diff+'%</b><div class="mut sm">gross · cost-of-living idx '+a.country.col+'</div></div>';
-  h+='</div><div class="help">Rough market estimates (2024–2026). Check live cost of living on <a class="link" href="https://www.numbeo.com/cost-of-living/" target="_blank" rel="noopener">Numbeo ↗</a> — index '+a.country.col+' vs Italy ~68 (NYC≈100).</div>';
+  h+='</div><div class="help"><span id="wbCol">⏳ fetching live price level…</span> · built-in index '+a.country.col+' (NYC≈100). Deep-dive on <a class="link" href="https://www.numbeo.com/cost-of-living/country_result.jsp?country='+encodeURIComponent(countryName)+'" target="_blank" rel="noopener">Numbeo ↗</a>.</div>';
   // ATS keywords
   h+='<div class="isec">🔑 ATS keywords for '+esc(role||a.fam)+' · '+esc(countryName)+'</div>';
   h+='<div class="two"><div class="rb good"><b class="sm" style="color:var(--hi)">✓ Present in your CV</b><div style="margin-top:8px">'+(a.present.length?a.present.map(k=>chip(k,'kwg')).join(' '):'<span class="mut">—</span>')+'</div></div>';
@@ -592,6 +605,7 @@ function reportModal(a,role,countryName){
   h+='<div class="isec">✍️ How to improve your CV (roast)</div>';
   if(a.roast.length)h+=a.roast.map(r=>'<div class="two" style="margin:8px 0"><div class="rb bad"><b class="sm" style="color:var(--low)">BEFORE</b><div class="sm" style="margin-top:6px">«'+esc(r.before.slice(0,120))+'»</div><div class="mut sm" style="margin-top:6px">Too generic — no number, scale or result.</div></div><div class="rb good"><b class="sm" style="color:var(--hi)">BETTER</b><div class="sm" style="margin-top:6px">Rephrase with impact: <b>'+esc(improveHint(a.fam))+'</b> — "shipped X for N users, improved metric by Y%".</div></div></div>').join('');
   else h+='<div class="help">No obviously weak bullets found — nice. Still: quantify every bullet (users, %, scale).</div>';
+  if(AI())h+='<button class="btn ghost" id="aiRoast" style="margin-top:8px">✨ Rewrite with AI — real line-by-line roast</button><div id="aiRoastOut" style="margin-top:8px"></div>';
   // compatible positions
   h+='<div class="isec">🎯 Compatible positions</div>';
   h+=a.positions.map(p=>'<div class="rb" style="margin:8px 0;border-color:'+(p.pct>=70?'var(--hi)':p.pct>=45?'var(--med)':'var(--line)')+'"><span class="pct '+pctCls(p.pct)+'">'+p.pct+'%</span> <b>'+esc(p.label)+'</b>'+(p.have.length?'<div class="sm" style="margin-top:5px"><span style="color:var(--hi)">have:</span> '+esc(p.have.join(', '))+'</div>':'')+(p.lack.length?'<div class="sm"><span style="color:var(--med)">add:</span> '+esc(p.lack.join(', '))+'</div>':'')+'</div>').join('');
@@ -605,6 +619,8 @@ function reportModal(a,role,countryName){
   modal(h);
   $('#applyCV').onclick=()=>{const add=a.present.map(k=>k.replace(/\b\w/g,c=>c.toUpperCase()));P.skills=[...new Set([...(P.skills||[]),...add])];save();renderProfile();renderKeywords&&renderKeywords();$('#applyCV').textContent='Added ✓';};
   $('#toAdapt').onclick=()=>adaptForm();
+  priceLevel(countryName).then(pl=>{const el=$('#wbCol');if(!el)return;el.innerHTML=pl?('🌍 World Bank price level <b>'+pl.toFixed(2)+'</b> (US=1.00 · '+(pl>0.92?'pricier':pl<0.72?'cheaper':'similar')+' than the US)'):'live index unavailable — using built-in';});
+  const arb=$('#aiRoast');if(arb)arb.onclick=async()=>{arb.disabled=true;arb.textContent='✨ Thinking…';try{const t=await aiCall('roast',{cv:LASTCV,role:(role||primaryRole()),country:countryName});$('#aiRoastOut').innerHTML='<div class="rb good">'+fmtAI(t)+'</div>';arb.textContent='✨ AI roast ✓';}catch(e){$('#aiRoastOut').innerHTML='<div class="help" style="color:var(--low)">AI error: '+esc(e.message)+'</div>';arb.disabled=false;arb.textContent='✨ Retry AI roast';}};
 }
 function analyzeForm(){
   const role=primaryRole(),city=(P.cities||[])[0]||'Germany',country=COUNTRY_OF[city]||'Germany';
@@ -653,13 +669,17 @@ function adaptReport(posting,cv){
   h+='<div class="help" style="text-align:center;color:var(--hi)">+'+(after-before)+'% estimated match lift</div>';
   h+='<div class="isec">➕ Keywords to add (from the posting)</div><div>'+(missing.length?missing.map(k=>chip(k,'kwo')).join(' '):'<span style="color:var(--hi)">Your CV already covers the posting\'s keywords ✓</span>')+'</div>';
   h+='<div class="isec">✅ Already aligned</div><div>'+(have.length?have.map(k=>chip(k,'kwg')).join(' '):'<span class="mut">—</span>')+'</div>';
-  h+='<div class="isec">✉️ Cover letter draft (aligned to the posting)</div><textarea id="coverOut" rows="10">'+esc(genCover(posting,cv,role))+'</textarea><div class="row" style="margin-top:8px"><span class="help">Edit freely, then copy or download.</span><span><button class="btn ghost" id="cvCopy">Copy</button> <button class="btn ghost" id="cvDl">Download .txt</button></span></div>';
+  const aiCoverBtn=AI()?'<button class="btn" id="cvAI">✨ Write with AI</button> ':'';
+  h+='<div class="isec">✉️ Cover letter draft (aligned to the posting)</div><textarea id="coverOut" rows="10">'+esc(genCover(posting,cv,role))+'</textarea><div class="row" style="margin-top:8px"><span class="help">Edit freely, then copy or download.</span><span>'+aiCoverBtn+'<button class="btn ghost" id="cvCopy">Copy</button> <button class="btn ghost" id="cvDl">Download .txt</button></span></div>';
   h+='<div class="isec">🎤 Interview prep</div><ul class="sm" style="margin:4px 0;padding-left:18px">'+(IQ[fam]||IQ.design).map(q=>'<li style="margin:5px 0">'+esc(q)+'</li>').join('')+'</ul>';
   h+='<div class="help">Model answers use your profile: lead with '+esc(((P.interview&&P.interview.strengths)||P.skills||['your strengths']).slice(0,3).join(', '))+'; quantify results; close with why this role excites you.</div>';
-  h+='<div class="cta" style="margin-top:14px">🤖 For a fully AI-written cover letter & CV tailored line-by-line, run <b>/apply</b> in Claude Code — it compiles a LaTeX CV + cover letter for this exact posting.</div>';
+  if(AI())h+='<button class="btn ghost" id="ivAI" style="margin-top:8px">✨ Generate tailored answers with AI</button><div id="ivAIOut" style="margin-top:8px"></div>';
+  h+='<div class="cta" style="margin-top:14px">'+(AI()?'🤖 AI generation is <b>on</b> — use the ✨ buttons above. For a compiled LaTeX CV + cover letter PDF, run <b>/apply</b> in Claude Code.':'🤖 Want genuinely AI-written output? Run this app locally with an <b>ANTHROPIC_API_KEY</b> (see README) to unlock the ✨ AI buttons — or use <b>/apply</b> in Claude Code.')+'</div>';
   modal(h);
   $('#cvCopy').onclick=()=>{const t=$('#coverOut');t.select();document.execCommand('copy');$('#cvCopy').textContent='Copied ✓';};
   $('#cvDl').onclick=()=>dl('cover-letter.txt',$('#coverOut').value,'text/plain');
+  const cai=$('#cvAI');if(cai)cai.onclick=async()=>{cai.disabled=true;cai.textContent='✨ Writing…';try{const t=await aiCall('cover',{posting,cv:LASTCV,role,company:((posting.match(/at ([A-Z][A-Za-z0-9&.\- ]{2,30})/)||[])[1]||'').trim()});$('#coverOut').value=t;cai.textContent='✨ AI ✓';}catch(e){cai.textContent='✨ Retry';cai.disabled=false;alert('AI error: '+e.message);}};
+  const iai=$('#ivAI');if(iai)iai.onclick=async()=>{iai.disabled=true;iai.textContent='✨ Thinking…';try{const t=await aiCall('interview',{posting,role});$('#ivAIOut').innerHTML='<div class="rb good">'+fmtAI(t)+'</div>';iai.textContent='✨ AI answers ✓';}catch(e){$('#ivAIOut').innerHTML='<div class="help" style="color:var(--low)">AI error: '+esc(e.message)+'</div>';iai.disabled=false;iai.textContent='✨ Retry';}};
 }
 function render(rows){
   const p=$('#resPanel'),box=$('#results');

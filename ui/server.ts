@@ -145,6 +145,41 @@ async function appendTracker(jobs: any[]) {
   return { added, total: jobs.length }
 }
 
+// --- AI (optional; local only; needs ANTHROPIC_API_KEY) ------------------------
+const AI_KEY = process.env.ANTHROPIC_API_KEY || ""
+const AI_MODEL = process.env.AIJS_MODEL || "claude-sonnet-5"
+function aiPrompt(task: string, b: any): string {
+  const P = b.profile || {}
+  const iv = P.interview || {}
+  const who = `Candidate: ${P.name || "(unnamed)"} · target role(s): ${(P.roles || []).join(", ") || P.role || "—"} · career level: ${P.level || "—"}.
+Skills: ${(P.skills || []).join(", ")}.
+Strengths: ${(iv.strengths || []).join(", ")}.
+Key achievements: ${(iv.achievements || []).join(" | ")}.
+Languages: ${(iv.languages || []).join(", ")}. Notes: ${P.notes || ""}.`
+  if (task === "cover")
+    return `Write a concise, warm-but-professional one-page cover letter (~230 words) for the role "${b.role || ""}"${b.company ? ` at ${b.company}` : ""}. Mirror the job posting's language and priorities, and use ONLY real details from the candidate. No clichés, no invented facts.\n\n${who}\n\nJOB POSTING:\n${b.posting || "(not provided)"}\n\nCANDIDATE CV:\n${b.cv || "(not provided)"}\n\nOutput ONLY the letter body text.`
+  if (task === "roast")
+    return `You are a blunt but constructive senior recruiter. Critically review this CV for a "${b.role || ""}" role targeting ${b.country || ""}. Return markdown with: (1) 3–5 "Before → Better" rewrites — quote the candidate's weak bullets verbatim, then rewrite each with scale, stack and a measurable result; (2) the top ATS keywords missing for this role & country; (3) three prioritized fixes. Be specific and honest; never invent numbers.\n\n${who}\n\nCV:\n${b.cv || "(not provided)"}`
+  if (task === "interview")
+    return `Create an interview-prep guide for the role "${b.role || ""}". Give 6 likely questions and, for each, a tailored STAR model-answer outline drawing on the candidate's REAL experience below. End with 3 sharp questions the candidate should ask the interviewer.\n\n${who}\n\n${b.posting ? `JOB POSTING:\n${b.posting}` : ""}`
+  return who
+}
+async function aiGenerate(task: string, body: any): Promise<string> {
+  if (!AI_KEY) throw new Error("AI not configured — set ANTHROPIC_API_KEY")
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": AI_KEY, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({
+      model: AI_MODEL, max_tokens: 1800,
+      system: "You are an expert career coach and CV writer. Be concrete, specific and honest. Never invent facts, employers, dates or numbers the candidate did not provide.",
+      messages: [{ role: "user", content: aiPrompt(task, body) }],
+    }),
+  })
+  const data: any = await res.json()
+  if (data.error) throw new Error(data.error.message || "AI request failed")
+  return (data.content || []).map((c: any) => c.text || "").join("").trim()
+}
+
 // --- Server --------------------------------------------------------------------
 const handlers = {
   idleTimeout: 120 as const,
@@ -156,6 +191,8 @@ const handlers = {
     if (url.pathname === "/api/capabilities") {
       return Response.json({
         local: true,
+        ai: !!AI_KEY,
+        aiModel: AI_KEY ? AI_MODEL : null,
         sources: Object.fromEntries(Object.entries(SOURCES).map(([k, v]) => [k, v.label])),
         cities: Object.fromEntries(Object.entries(CITIES).map(([c, v]) => [c, Object.keys(v).filter((k) => k in SOURCES)])),
         global: GLOBAL,
@@ -170,6 +207,10 @@ const handlers = {
     if (url.pathname === "/api/tracker" && req.method === "POST") {
       try { const b = (await req.json()) as { jobs: any[] }; return Response.json(await appendTracker(b.jobs || [])) }
       catch (e) { return Response.json({ error: String(e) }, { status: 400 }) }
+    }
+    if (url.pathname === "/api/ai" && req.method === "POST") {
+      try { const b = (await req.json()) as any; return Response.json({ text: await aiGenerate(b.task, b) }) }
+      catch (e) { return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 }) }
     }
     if (url.pathname === "/api/save-doc" && req.method === "POST") {
       try {

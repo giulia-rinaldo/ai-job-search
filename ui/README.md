@@ -50,6 +50,33 @@ Swiss/Danish boards, people run it locally.)
   Service, Careers@Gov, UN…) and local boards (Seoul: Wanted/JobKorea/Saramin, etc.) that block
   scraping and must be opened directly.
 
+## AI mode (optional — genuinely generative)
+
+By default the Career tools (CV roast, cover letter, interview prep) are strong
+**deterministic** drafts and the app stays free/static. To unlock the ✨ **AI** buttons —
+a real line-by-line CV roast, an AI-written cover letter, and tailored STAR interview
+answers — run locally with an Anthropic API key:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...        # your key — stays on your machine
+export AIJS_MODEL=claude-sonnet-5          # optional; default is claude-sonnet-5
+bun run ui/server.ts
+```
+
+- The key is a **server-side env var** — it is never sent to the browser, written to
+  disk, or committed. The frontend only calls the local `/api/ai` endpoint.
+- Without a key, `/api/capabilities` reports `ai:false` and the app silently falls back
+  to the deterministic drafts. The hosted GitHub Pages site is always deterministic
+  (no server, no key).
+- Cost is a few cents per generation. If the default model id ever errors, set
+  `AIJS_MODEL` to a current model.
+
+## Cost of living
+
+The CV report shows a live **World Bank price level** (PPP factor ÷ market exchange
+rate, US≈1.00) fetched directly in the browser from the CORS-open World Bank API, with a
+built-in index as fallback, plus a deep-dive link to **Numbeo**. No API key needed.
+
 ## Notes
 
 - Zero runtime dependencies — Bun's built-in server + `Bun.spawn`; the hosted app is pure
