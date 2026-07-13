@@ -233,9 +233,9 @@ Give it your local job board's URL. The command investigates the portal (search-
 
 For a **country-agnostic** starting point, the repo also includes **`linkedin-search`** — a job-search skill built on LinkedIn's public, unauthenticated `jobs-guest` endpoints. It is field-agnostic, has **zero runtime dependencies** (runs with just `bun`), and takes the search location as an explicit flag, so it works for any market out of the box (`-l "Berlin, Germany"`, `-l "Mumbai, Maharashtra, India"`, `-l "Remote"`, …). It is intended for **personal use only** — automated access is against LinkedIn's Terms of Service, so keep volume low. See `.agents/skills/linkedin-search/SKILL.md`.
 
-### Salary benchmarking
+### Salary & cost of living
 
-The salary tool works with any salary data you provide (union statistics, Glassdoor exports, personal research, etc.). See `tools/README_SALARY_TOOL.md` for the expected format and setup. If you don't have salary data, the salary step is simply skipped.
+Run `/salary <role> in <city>` for live salary ranges (levels.fyi, Glassdoor, PayScale) and cost of living (Numbeo, World Bank), compared to your home market — every figure linked to its source.
 
 ### Starting over
 

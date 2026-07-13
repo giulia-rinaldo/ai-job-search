@@ -79,12 +79,7 @@ Does this role advance career goals and contain tasks that energize?
 
 ### 6. Salary Benchmark (Optional)
 
-If the salary lookup tool is configured (`salary_data.json` exists), look up the company:
-```
-python salary_lookup.py "<Company Name>" --json
-```
-
-If a city is known from the posting, add `--city "<City>"` to narrow results.
+For a salary benchmark, run a quick live check via WebSearch (levels.fyi / Glassdoor / Numbeo) for the role + city — or use `/salary <role> in <city>` for the full sourced breakdown.
 
 Present findings as:
 ```
