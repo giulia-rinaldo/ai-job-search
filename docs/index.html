@@ -60,6 +60,14 @@ a.title{color:var(--fg);text-decoration:none;font-weight:600}a.title:hover{color
 .isec{margin:20px 0 6px;font-weight:700;font-size:13px;color:var(--acc);border-top:1px solid var(--line);padding-top:14px}.isec:first-of-type{border-top:none;padding-top:0;margin-top:10px}
 label.q{display:block;font-size:13.5px;color:var(--fg);margin:12px 0 5px;font-weight:600;text-transform:none;letter-spacing:0}
 .cta{background:color-mix(in srgb,var(--acc) 10%,transparent);border:1px solid var(--acc);border-radius:10px;padding:10px 13px;margin-bottom:14px;font-size:13.5px}
+.tools2{display:flex;gap:10px;flex-wrap:wrap}.tools2 .btn{flex:1 1 200px;text-align:center}
+.score{display:flex;align-items:center;gap:16px;margin:6px 0 14px}.scoreN{font-size:34px;font-weight:800;line-height:1;min-width:96px;height:96px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:5px solid var(--acc);color:var(--fg)}.scoreN small{font-size:12px;color:var(--mut);font-weight:600}
+.sal{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:8px 0}
+.salbox{background:var(--in);border:1px solid var(--line);border-radius:12px;padding:12px}.salbox b{font-size:18px}.salbox.tgt{border-color:var(--hi)}.salbox.up{border-color:var(--med)}
+.ba{display:grid;grid-template-columns:1fr 28px 1fr;gap:10px;align-items:center;margin:8px 0}.bbox{border-radius:12px;padding:14px;text-align:center;border:1px solid var(--line)}.bbox.lo{background:color-mix(in srgb,var(--low) 8%,transparent)}.bbox.hi2{background:color-mix(in srgb,var(--hi) 10%,transparent);border-color:var(--hi)}.bbox .n{font-size:26px;font-weight:800}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:640px){.two{grid-template-columns:1fr}}
+.rb{border:1px solid var(--line);border-radius:12px;padding:13px}.rb.bad{border-color:var(--low)}.rb.good{border-color:var(--hi)}
+.kwg{border-color:var(--hi)!important;color:var(--hi)}.kwo{border-color:var(--med)!important;color:var(--med)}
 </style></head><body>
 <div class="wrap">
   <!-- ONBOARDING -->
@@ -129,6 +137,19 @@ label.q{display:block;font-size:13.5px;color:var(--fg);margin:12px 0 5px;font-we
     <div class="card" id="profileCard">
       <div class="phead"><h3>👤 Your profile</h3><button class="iconbtn" id="editProfile">✏️ Edit</button></div>
       <div id="profileBody"></div>
+    </div>
+
+    <!-- CAREER TOOLS -->
+    <div class="card" id="toolsCard" style="margin-top:16px">
+      <div class="phead"><h3>🧰 Career tools</h3></div>
+      <div class="chips" style="margin:0 0 13px">
+        <span class="chipro">1️⃣ Analyze CV</span><span class="chipro">2️⃣ Search real jobs</span><span class="chipro">3️⃣ Adapt CV & cover letter</span><span class="chipro">4️⃣ Interview prep</span>
+      </div>
+      <div class="tools2">
+        <button class="btn" id="btnAnalyze">🧪 Analyze my CV &nbsp;·&nbsp; report + /setup</button>
+        <button class="btn ghost" id="btnAdapt">🎯 Adapt CV & cover letter to a posting</button>
+      </div>
+      <div class="help">Analyze reads your pasted CV → ATS score, keyword gaps by role & country, salary + cost of living, compatible roles, and a roast — and can fill your profile. Adapt aligns your CV to a specific posting and drafts a cover letter + interview prep.</div>
     </div>
 
     <!-- SEARCH TOOL (bottom) -->
@@ -360,6 +381,7 @@ $('#kwadd').onkeydown=e=>{if(e.key!=='Enter')return;const v=e.target.value.trim(
     const l=document.createElement('label');l.className='chip sel';l.dataset.kw=v;l.innerHTML='<input type="checkbox" checked>'+esc(v);box.appendChild(l);}
   e.target.value='';};
 $('#editProfile').onclick=startOnb;
+$('#btnAnalyze').onclick=analyzeForm;$('#btnAdapt').onclick=adaptForm;
 
 // ============ Search ============
 // mins-based window; accepts a full ISO string OR an epoch-ms number for sub-day precision
@@ -473,7 +495,7 @@ function region(loc){loc=(loc||'').toLowerCase();
 function roleFamily(t){t=(t||'').toLowerCase();if(/engineer|developer|programmer/.test(t))return 'eng';if(/product manager|program manager|\bpm\b/.test(t))return 'pm';if(/data|analyst|scientist/.test(t))return 'data';return 'design';}
 function levelOf(t){t=(t||'').toLowerCase();if(/senior|sr\.?|lead|principal|staff|head|director|manager|chief|vp/.test(t))return 'senior';if(/junior|jr\.?|graduate|intern|entry|trainee|associate|apprentice/.test(t))return 'junior';return 'mid';}
 const SAL_BASE={design:{junior:[35,52],mid:[55,80],senior:[85,120]},pm:{junior:[45,65],mid:[70,100],senior:[110,160]},eng:{junior:[45,70],mid:[75,110],senior:[115,170]},data:{junior:[42,62],mid:[68,98],senior:[105,150]}};
-const SAL_MULT={us:1.9,ch:1.85,uk:1.25,eu:1.0,asia:1.15,remote:1.1},SAL_CUR={us:'$',ch:'CHF ',uk:'£',eu:'€',asia:'€',remote:'€'};
+const SAL_MULT={us:1.9,ch:1.85,uk:1.25,eu:1.0,it:0.78,asia:1.15,remote:1.1},SAL_CUR={us:'$',ch:'CHF ',uk:'£',eu:'€',it:'€',asia:'€',remote:'€'};
 function salaryEst(job){const fam=roleFamily(job.title),lv=levelOf(job.title),reg=region(job.location||job.city);
   const b=(SAL_BASE[fam]||SAL_BASE.design)[lv],m=SAL_MULT[reg]||1;
   const lo=Math.round(b[0]*m/5)*5,hi=Math.round(b[1]*m/5)*5;return {lo,hi,cur:SAL_CUR[reg]||'€',fam,lv,reg,mid:(lo+hi)/2};}
@@ -508,6 +530,136 @@ function openJobDetail(job){if(!job.align)job.align=alignment(job);
   h+='<div class="linkline" style="margin-top:14px"><a class="btn" href="'+esc(job.url)+'" target="_blank" rel="noopener">Open posting ↗</a> <button class="btn ghost" id="starDetail">'+(isSL(job)?'★ Shortlisted':'☆ Add to shortlist')+'</button></div>';
   modal(h);
   const sd=$('#starDetail');if(sd)sd.onclick=()=>{if(isSL(job))SL=SL.filter(x=>x.url!==job.url);else SL.push(job);saveSL();sd.textContent=isSL(job)?'★ Shortlisted':'☆ Add to shortlist';render(LASTROWS);};
+}
+// ============ Career tools: CV analysis · ATS · salary+cost-of-living · adapt · cover letter · interview ============
+let LASTCV='';
+const ATS_KW={
+  design:['user research','wireframing','prototyping','figma','design systems','usability testing','interaction design','ux','ui','journey mapping','accessibility','a/b testing','information architecture','design thinking','user-centered','service design'],
+  pm:['roadmap','stakeholder management','okrs','a/b testing','product strategy','user research','analytics','backlog','prioritization','go-to-market','kpis','agile','scrum','metrics'],
+  eng:['react','typescript','javascript','node','rest api','sql','git','ci/cd','testing','agile','docker','cloud','python','unit testing','microservices'],
+  data:['sql','python','machine learning','statistics','data visualization','a/b testing','etl','dashboards','experimentation','stakeholder','analytics'],
+};
+// country → salary region, language expectation, Numbeo-style cost-of-living index (NYC≈100)
+const COUNTRY={
+  Italy:{region:'it',lang:'Italian + English',col:68},Germany:{region:'eu',lang:'English C1 (German a plus)',col:78},
+  Netherlands:{region:'eu',lang:'English C1',col:80},Finland:{region:'eu',lang:'English C1',col:82},
+  France:{region:'eu',lang:'English + French',col:80},Belgium:{region:'eu',lang:'English + FR/NL',col:79},
+  Denmark:{region:'eu',lang:'English C1',col:88},Switzerland:{region:'ch',lang:'English (DE/FR a plus)',col:122},
+  'United Kingdom':{region:'uk',lang:'English',col:85},'United States':{region:'us',lang:'English',col:100},
+  Singapore:{region:'asia',lang:'English',col:86},'Hong Kong':{region:'asia',lang:'English (Cantonese a plus)',col:95},
+  'South Korea':{region:'asia',lang:'English + Korean',col:74},China:{region:'asia',lang:'English + Mandarin',col:60},Remote:{region:'remote',lang:'English',col:75},
+};
+const COUNTRY_OF={Helsinki:'Finland',Copenhagen:'Denmark',Amsterdam:'Netherlands',Zurich:'Switzerland',Geneva:'Switzerland',Basel:'Switzerland',Bern:'Switzerland',Paris:'France',Brussels:'Belgium',Berlin:'Germany',London:'United Kingdom',Seoul:'South Korea',Singapore:'Singapore','Hong Kong':'Hong Kong',Shanghai:'China','New York':'United States','San Francisco':'United States',Milan:'Italy',Remote:'Remote'};
+function salaryByRegion(fam,lv,reg){const b=(SAL_BASE[fam]||SAL_BASE.design)[lv]||SAL_BASE.design.mid;const m=SAL_MULT[reg]||1;const lo=Math.round(b[0]*m/5)*5,hi=Math.round(b[1]*m/5)*5;return {lo,hi,mid:(lo+hi)/2};}
+function improveHint(fam){return {design:'Figma / design systems',eng:'React / TypeScript',pm:'roadmap / OKRs',data:'SQL / Python'}[fam]||'the tools the role names';}
+function compatPositions(text){const fams=[['design','Product / UX Designer'],['pm','Product Manager'],['eng','Software Engineer'],['data','Data Analyst']];
+  return fams.map(([f,label])=>{const kws=ATS_KW[f];const have=kws.filter(k=>text.includes(k));const pct=Math.round(100*have.length/kws.length);
+    return {f,label,pct,have:have.slice(0,4),lack:kws.filter(k=>!have.includes(k)).slice(0,3)};}).sort((a,b)=>b.pct-a.pct);}
+function analyzeCV(cv,roleTitle,countryName){
+  const text=(cv||'').toLowerCase();const fam=roleFamily(roleTitle),lv=P.level==='senior'?'senior':P.level==='early'?'junior':(levelOf(roleTitle)||'mid');
+  const kws=ATS_KW[fam]||ATS_KW.design;const present=kws.filter(k=>text.includes(k)),missing=kws.filter(k=>!present.includes(k));
+  const coverage=kws.length?present.length/kws.length:0;
+  const hasNums=(cv.match(/\d+ ?%|\b\d{2,}\b/g)||[]).length>=3;const words=(cv.match(/\S+/g)||[]).length;
+  const hasSections=/experience|education|skills|esperienz|istruzione|competenz/i.test(cv);
+  const structure=(hasNums?0.5:0)+(hasSections?0.3:0)+(words>150?0.2:words>60?0.1:0);
+  const langOk=/english|inglese|c1|c2|fluent|ielts|b2|bilingual/i.test(cv);
+  const country=COUNTRY[countryName]||{region:'eu',lang:'English',col:80};
+  const score=Math.max(15,Math.min(97,Math.round(58*coverage+22*structure+20*(langOk?1:0.4))));
+  const homeSal=salaryByRegion(fam,lv,'it'),tgtSal=salaryByRegion(fam,lv,country.region);
+  const diff=Math.round(((tgtSal.mid-homeSal.mid)/homeSal.mid)*100);
+  const lines=cv.split(/\n|•|·|;|\.\s/).map(s=>s.trim()).filter(s=>s.length>25&&/\b(develop|manage|work|responsible|design|support|assist|handle|led|built|occup|svilupp|gest|mi occup)/i.test(s));
+  const roast=lines.filter(l=>!/\d/.test(l)).slice(0,3).map(l=>({before:l,fam}));
+  return {score,fam,lv,present,missing,coverage,country,homeSal,tgtSal,diff,roast,positions:compatPositions(text),langOk,hasNums,words};
+}
+function reportModal(a,role,countryName){
+  const chip=(t,c)=>'<span class="chipro '+(c||'')+'">'+esc(t)+'</span>';
+  const scoreband=a.score>=71?'Great':a.score>=51?'Good':'Fair';
+  let h='<div class="mut sm" style="letter-spacing:.08em">🧪 YOUR REPORT</div><h3 style="margin:2px 0 2px">'+esc(role||primaryRole())+'</h3>';
+  h+='<div class="co" style="margin-bottom:6px">Target: '+esc(countryName)+' · '+a.lv+' '+a.fam+' · language: '+esc(a.country.lang)+'</div>';
+  h+='<div class="score"><div class="scoreN" style="border-color:'+(a.score>=71?'var(--hi)':a.score>=51?'var(--med)':'var(--low)')+'">'+a.score+'<small>/100 '+scoreband+'</small></div><div class="sm"><b>ATS & role match.</b> Keyword coverage '+Math.round(a.coverage*100)+'% · '+(a.hasNums?'has metrics ✓':'⚠️ few numbers')+' · '+(a.langOk?'language ✓':'⚠️ state your English level')+'.<div style="margin-top:6px">'+a.present.slice(0,6).map(k=>chip(k,'kwg')).join(' ')+'</div></div></div>';
+  // salary + cost of living
+  const cur=a.country.region==='us'?'$':a.country.region==='ch'?'CHF ':a.country.region==='uk'?'£':'€';
+  h+='<div class="isec">💰 Estimated pay & cost of living</div><div class="sal">';
+  h+='<div class="salbox"><div class="mut sm">🇮🇹 Italy (home)</div><b>€'+a.homeSal.lo+'k–'+a.homeSal.hi+'k</b><div class="mut sm">/yr estimate</div></div>';
+  h+='<div class="salbox tgt"><div class="mut sm">'+esc(countryName)+'</div><b>'+cur+a.tgtSal.lo+'k–'+cur+a.tgtSal.hi+'k</b><div class="mut sm">median '+cur+Math.round(a.tgtSal.mid)+'k</div></div>';
+  h+='<div class="salbox '+(a.diff>=0?'up':'')+'"><div class="mut sm">vs Italy</div><b style="color:'+(a.diff>=0?'var(--med)':'var(--low)')+'">'+(a.diff>=0?'+':'')+a.diff+'%</b><div class="mut sm">gross · cost-of-living idx '+a.country.col+'</div></div>';
+  h+='</div><div class="help">Rough market estimates (2024–2026). Check live cost of living on <a class="link" href="https://www.numbeo.com/cost-of-living/" target="_blank" rel="noopener">Numbeo ↗</a> — index '+a.country.col+' vs Italy ~68 (NYC≈100).</div>';
+  // ATS keywords
+  h+='<div class="isec">🔑 ATS keywords for '+esc(role||a.fam)+' · '+esc(countryName)+'</div>';
+  h+='<div class="two"><div class="rb good"><b class="sm" style="color:var(--hi)">✓ Present in your CV</b><div style="margin-top:8px">'+(a.present.length?a.present.map(k=>chip(k,'kwg')).join(' '):'<span class="mut">—</span>')+'</div></div>';
+  h+='<div class="rb bad"><b class="sm" style="color:var(--med)">➕ Add these (cover many postings)</b><div style="margin-top:8px">'+(a.missing.length?a.missing.map(k=>chip(k,'kwo')).join(' '):'<span style="color:var(--hi)">great coverage!</span>')+'</div></div></div>';
+  // CV roast
+  h+='<div class="isec">✍️ How to improve your CV (roast)</div>';
+  if(a.roast.length)h+=a.roast.map(r=>'<div class="two" style="margin:8px 0"><div class="rb bad"><b class="sm" style="color:var(--low)">BEFORE</b><div class="sm" style="margin-top:6px">«'+esc(r.before.slice(0,120))+'»</div><div class="mut sm" style="margin-top:6px">Too generic — no number, scale or result.</div></div><div class="rb good"><b class="sm" style="color:var(--hi)">BETTER</b><div class="sm" style="margin-top:6px">Rephrase with impact: <b>'+esc(improveHint(a.fam))+'</b> — "shipped X for N users, improved metric by Y%".</div></div></div>').join('');
+  else h+='<div class="help">No obviously weak bullets found — nice. Still: quantify every bullet (users, %, scale).</div>';
+  // compatible positions
+  h+='<div class="isec">🎯 Compatible positions</div>';
+  h+=a.positions.map(p=>'<div class="rb" style="margin:8px 0;border-color:'+(p.pct>=70?'var(--hi)':p.pct>=45?'var(--med)':'var(--line)')+'"><span class="pct '+pctCls(p.pct)+'">'+p.pct+'%</span> <b>'+esc(p.label)+'</b>'+(p.have.length?'<div class="sm" style="margin-top:5px"><span style="color:var(--hi)">have:</span> '+esc(p.have.join(', '))+'</div>':'')+(p.lack.length?'<div class="sm"><span style="color:var(--med)">add:</span> '+esc(p.lack.join(', '))+'</div>':'')+'</div>').join('');
+  // priorities + actions
+  h+='<div class="isec">📋 Your priorities</div><ol class="sm" style="margin:4px 0;padding-left:20px">';
+  if(!a.hasNums)h+='<li>Add 2–3 bullets with numbers (users, %, scale) in your top role.</li>';
+  if(a.missing.length)h+='<li>Weave in missing ATS keywords: <b>'+esc(a.missing.slice(0,4).join(', '))+'</b>.</li>';
+  if(!a.langOk)h+='<li>State your English level explicitly (e.g. "English — C1 / IELTS 7.5").</li>';
+  h+='<li>Mirror the target title "<b>'+esc(role||primaryRole())+'</b>" in your headline.</li></ol>';
+  h+='<div class="row" style="margin-top:16px"><button class="btn ghost" id="toAdapt">🎯 Adapt to a posting →</button><button class="btn" id="applyCV">✓ Add found skills to my profile</button></div>';
+  modal(h);
+  $('#applyCV').onclick=()=>{const add=a.present.map(k=>k.replace(/\b\w/g,c=>c.toUpperCase()));P.skills=[...new Set([...(P.skills||[]),...add])];save();renderProfile();renderKeywords&&renderKeywords();$('#applyCV').textContent='Added ✓';};
+  $('#toAdapt').onclick=()=>adaptForm();
+}
+function analyzeForm(){
+  const role=primaryRole(),city=(P.cities||[])[0]||'Germany',country=COUNTRY_OF[city]||'Germany';
+  let h='<h3>🧪 Analyze my CV</h3><p class="mut sm">Paste your CV text (copy it from your PDF/DOCX), pick the target role & country, and get a full report: ATS score, keyword gaps, salary & cost of living, compatible roles and a CV roast. This is the in-app <b>/setup</b> — it can also fill your profile from what it finds.</p>';
+  h+='<label class="q">Target role</label><input id="anRole" value="'+esc(role)+'">';
+  h+='<label class="q">Target country</label><select id="anCountry">'+Object.keys(COUNTRY).map(c=>'<option'+(c===country?' selected':'')+'>'+esc(c)+'</option>').join('')+'</select>';
+  h+='<label class="q">Paste your CV text</label><textarea id="anCV" rows="9" placeholder="Paste the full text of your CV here…">'+esc(LASTCV)+'</textarea>';
+  h+='<div class="row" style="margin-top:16px"><button class="btn ghost" id="anCancel">Close</button><button class="btn" id="anGo">Analyze ✓</button></div>';
+  modal(h);
+  $('#anCancel').onclick=()=>$('#overlay').classList.add('hide');
+  $('#anGo').onclick=()=>{const cv=$('#anCV').value.trim();if(cv.length<40){alert('Paste a bit more of your CV text.');return;}LASTCV=cv;const r=$('#anRole').value.trim(),c=$('#anCountry').value;reportModal(analyzeCV(cv,r,c),r,c);};
+}
+// ---- Adapt to a posting: ATS before/after + cover letter + interview ----
+function atsKwOf(text){text=(text||'').toLowerCase();return [...new Set(Object.values(ATS_KW).flat())].filter(k=>text.includes(k));}
+function genCover(posting,cv,role){
+  const p=(posting||'').toLowerCase();const company=((posting.match(/at ([A-Z][A-Za-z0-9&.\- ]{2,30})/)||[])[1]||'your company').trim();
+  const need=atsKwOf(posting),have=need.filter(k=>(cv||'').toLowerCase().includes(k));
+  const strengths=((P.interview&&P.interview.strengths)||P.skills||[]).slice(0,3).join(', ');
+  const name=P.name||'';
+  return 'Dear Hiring Manager,\n\nI\'m excited to apply for the '+(role||primaryRole())+' role'+(company?' at '+company:'')+'. '+
+  'My background in '+(strengths||'design and technology')+' maps directly to what you\'re looking for'+(have.length?', including '+have.slice(0,4).join(', ')+'.':'.')+'\n\n'+
+  'In recent work I\'ve '+((P.interview&&P.interview.achievements&&P.interview.achievements[0])||'shipped end-to-end projects with measurable impact')+'. '+
+  'I\'m drawn to this role because '+((P.interview&&P.interview.excites)||'it lets me build things that look like the future')+'.\n\n'+
+  'I\'d love to discuss how I can contribute. Thank you for your consideration.\n\nBest regards,\n'+name;
+}
+const IQ={design:['Walk me through a project from research to launch.','How do you balance user needs with business goals?','Tell me about a design decision you defended with data.','How do you handle feedback that conflicts with your vision?'],
+  pm:['How do you prioritize a roadmap with limited resources?','Describe a product you launched and its impact.','How do you decide what NOT to build?','Tell me about a metric you moved.'],
+  eng:['Walk me through a system you designed.','How do you approach testing and code quality?','Describe a hard bug you solved.','How do you handle technical debt?'],
+  data:['Describe an analysis that changed a decision.','How do you validate a model / experiment?','Explain a complex result to a non-technical stakeholder.','How do you ensure data quality?']};
+function adaptForm(){
+  let h='<h3>🎯 Adapt CV & cover letter to a posting</h3><p class="mut sm">Paste the job announcement. We align keywords, estimate the ATS lift, draft a cover letter and prep you for the interview.</p>';
+  h+='<label class="q">Paste the job posting</label><textarea id="adPost" rows="6" placeholder="Paste the full job description here…"></textarea>';
+  h+='<label class="q">Your CV text '+(LASTCV?'<span class="mut">(reused from your analysis)</span>':'')+'</label><textarea id="adCV" rows="5" placeholder="Paste your CV text…">'+esc(LASTCV)+'</textarea>';
+  h+='<div class="row" style="margin-top:16px"><button class="btn ghost" id="adCancel">Close</button><button class="btn" id="adGo">Adapt ✓</button></div>';
+  modal(h);
+  $('#adCancel').onclick=()=>$('#overlay').classList.add('hide');
+  $('#adGo').onclick=()=>{const post=$('#adPost').value.trim(),cv=$('#adCV').value.trim();if(post.length<30){alert('Paste the job posting.');return;}LASTCV=cv||LASTCV;adaptReport(post,cv);};
+}
+function adaptReport(posting,cv){
+  const chip=(t,c)=>'<span class="chipro '+(c||'')+'">'+esc(t)+'</span>';
+  const need=atsKwOf(posting),have=need.filter(k=>(cv||'').toLowerCase().includes(k)),missing=need.filter(k=>!have.includes(k));
+  const before=need.length?Math.round(100*have.length/need.length):50;const after=Math.min(96,before+Math.min(40,missing.length*8)||before);
+  const fam=roleFamily(posting),role=((posting.match(/\b(product|service|ux|ui|senior|junior|lead|staff)?[ ]?(designer|manager|engineer|developer|analyst|researcher)\b/i)||[])[0]||primaryRole());
+  let h='<div class="mut sm" style="letter-spacing:.08em">🎯 ADAPT TO POSTING</div><h3 style="margin:2px 0 10px">'+esc(role)+'</h3>';
+  h+='<div class="isec">📊 ATS alignment</div><div class="ba"><div class="bbox lo"><div class="n" style="color:var(--low)">'+before+'%</div><div class="sm">Before · your CV vs posting</div></div><div style="text-align:center;font-size:22px">→</div><div class="bbox hi2"><div class="n" style="color:var(--hi)">'+after+'%</div><div class="sm">After adding keywords</div></div></div>';
+  h+='<div class="help" style="text-align:center;color:var(--hi)">+'+(after-before)+'% estimated match lift</div>';
+  h+='<div class="isec">➕ Keywords to add (from the posting)</div><div>'+(missing.length?missing.map(k=>chip(k,'kwo')).join(' '):'<span style="color:var(--hi)">Your CV already covers the posting\'s keywords ✓</span>')+'</div>';
+  h+='<div class="isec">✅ Already aligned</div><div>'+(have.length?have.map(k=>chip(k,'kwg')).join(' '):'<span class="mut">—</span>')+'</div>';
+  h+='<div class="isec">✉️ Cover letter draft (aligned to the posting)</div><textarea id="coverOut" rows="10">'+esc(genCover(posting,cv,role))+'</textarea><div class="row" style="margin-top:8px"><span class="help">Edit freely, then copy or download.</span><span><button class="btn ghost" id="cvCopy">Copy</button> <button class="btn ghost" id="cvDl">Download .txt</button></span></div>';
+  h+='<div class="isec">🎤 Interview prep</div><ul class="sm" style="margin:4px 0;padding-left:18px">'+(IQ[fam]||IQ.design).map(q=>'<li style="margin:5px 0">'+esc(q)+'</li>').join('')+'</ul>';
+  h+='<div class="help">Model answers use your profile: lead with '+esc(((P.interview&&P.interview.strengths)||P.skills||['your strengths']).slice(0,3).join(', '))+'; quantify results; close with why this role excites you.</div>';
+  h+='<div class="cta" style="margin-top:14px">🤖 For a fully AI-written cover letter & CV tailored line-by-line, run <b>/apply</b> in Claude Code — it compiles a LaTeX CV + cover letter for this exact posting.</div>';
+  modal(h);
+  $('#cvCopy').onclick=()=>{const t=$('#coverOut');t.select();document.execCommand('copy');$('#cvCopy').textContent='Copied ✓';};
+  $('#cvDl').onclick=()=>dl('cover-letter.txt',$('#coverOut').value,'text/plain');
 }
 function render(rows){
   const p=$('#resPanel'),box=$('#results');
