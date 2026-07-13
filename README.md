@@ -36,8 +36,7 @@ The framework encodes career guidance best practices, including structured evalu
 ## Prerequisites
 
 - [Claude Code](https://claude.com/claude-code) (CLI)
-- Python 3.10+
-- [Bun](https://bun.sh) (for Danish job search CLI tools)
+- [Bun](https://bun.sh) (for the job-search CLI tools)
 - LaTeX distribution with `lualatex` and `xelatex`: [TeX Live](https://tug.org/texlive/) or [MiKTeX](https://miktex.org/). The CV compiles with `lualatex` (pdflatex often fails on modern MiKTeX installs with `fontawesome5` font-expansion errors); the cover letter compiles with `xelatex` because `cover.cls` requires `fontspec`.
 - Optional: `pdftotext` from [poppler](https://poppler.freedesktop.org/) (macOS: `brew install poppler`, Debian/Ubuntu: `apt install poppler-utils`, Windows: `choco install poppler`) — used by `/apply`'s ATS parseability check on the compiled CV. If missing, the check degrades gracefully to a visual keyword review.
 
@@ -53,14 +52,11 @@ cd ai-job-search
 ### 2. Install job search tools
 
 ```bash
-cd .agents/skills/jobbank-search/cli && bun install && cd ../../../..
-cd .agents/skills/jobdanmark-search/cli && bun install && cd ../../../..
-cd .agents/skills/jobindex-search/cli && bun install && cd ../../../..
-cd .agents/skills/jobnet-search/cli && bun install && cd ../../../..
-cd .agents/skills/linkedin-search/cli && bun install && cd ../../../..
+# installs all portal CLIs in one line
+for d in .agents/skills/*/cli; do (cd "$d" && bun install); done
 ```
 
-For `linkedin-search` the install is optional: it has zero runtime dependencies and runs with plain `bun`; `bun install` only pulls TypeScript dev types.
+The CLIs are zero-runtime-dependency (plain `bun` + `fetch`); `bun install` only pulls TypeScript dev types. Shipped CLIs: `linkedin-search` (global), `greenhouse-careers`, `jobs-ch-search` + `jobup-ch-search` (Switzerland), `jobindex-search` + `jobbank-search` (Denmark). Every other site is searched via WebSearch — add a dedicated CLI anytime with `/add-portal`.
 
 ### 3. Set up your profile
 
@@ -132,11 +128,12 @@ ai-job-search/
 │   │   └── upskill/                   # /upskill skill gap analysis and learning plan
 │   └── settings.json                  # Claude Code permissions (shared, scoped)
 ├── .agents/skills/                    # Job portal CLI tools
-│   ├── jobbank-search/                # Akademikernes Jobbank (Denmark)
-│   ├── jobdanmark-search/             # Jobdanmark.dk (Denmark)
+│   ├── linkedin-search/               # LinkedIn public job listings (country-agnostic)
+│   ├── greenhouse-careers/            # Greenhouse-hosted employers (multi-company)
+│   ├── jobs-ch-search/                # jobs.ch (Switzerland)
+│   ├── jobup-ch-search/               # jobup.ch (French-speaking Switzerland)
 │   ├── jobindex-search/               # Jobindex.dk (Denmark)
-│   ├── jobnet-search/                 # Jobnet.dk (Denmark, government portal)
-│   └── linkedin-search/               # LinkedIn public job listings (country-agnostic)
+│   └── jobbank-search/                # Akademikernes Jobbank (Denmark)
 ├── cv/
 │   └── main_example.tex               # moderncv LaTeX template
 ├── cover_letters/
@@ -151,14 +148,10 @@ ai-job-search/
 │   ├── diplomas/                      # Degree certificates and transcripts
 │   ├── references/                    # Reference letters
 │   └── applications/                  # Past application records (<company>_<role>/)
-├── salary_lookup.py                   # Salary benchmarking tool (BYO data)
-├── tools/
-│   ├── convert_salary_excel.py        # Convert salary Excel to JSON
-│   └── README_SALARY_TOOL.md          # Salary tool setup instructions
 ├── job_scraper/                       # Scraper state (seen jobs, results)
 ├── upskill/                           # /upskill report output (markdown reports per run)
 ├── job_search_tracker.csv             # Application tracking spreadsheet
-└── SETUP.md                           # Detailed setup guide
+└── SETUP.md                           # How to use this tool (start here)
 ```
 
 ## How `/apply` works

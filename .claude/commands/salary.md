@@ -28,4 +28,3 @@ A markdown brief:
 
 - Cite every number to a source you searched — **link it**. Say plainly when data is thin, dated, or estimated.
 - Prefer honest ranges over false precision. Never invent figures.
-- If the candidate has a local dataset, note they can also run `python salary_lookup.py "<Company>"` for company-specific benchmarks.
