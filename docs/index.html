@@ -2,6 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI Job Search</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%8D%3C/text%3E%3C/svg%3E">
 <meta name="description" content="Your personal AI-assisted job search — set up your profile, search big-tech & local boards, and see how well each role aligns with you.">
 <style>
 :root{--bg:#0f1115;--card:#181b22;--line:#262b36;--fg:#e8eaed;--mut:#9aa3b2;--acc:#5b8cff;--hi:#2ecc71;--med:#f2c14e;--low:#6b7280;--in:#0c0e13;--star:#ffcf4a}
@@ -124,7 +125,7 @@ label.q{display:block;font-size:13.5px;color:var(--fg);margin:12px 0 5px;font-we
         <button class="iconbtn" id="slBtn">⭐ Shortlist (0)</button>
         <div class="menu"><button class="iconbtn" id="gear">⚙️ Profile</button>
           <div class="pop hide" id="pop">
-            <button data-a="edit">✏️ Edit profile</button><button data-a="interview">🎤 In-depth interview</button><button data-a="links">🔗 Job sites & public sector</button>
+            <button data-a="edit">✏️ Edit profile</button><button data-a="interview">🎤 In-depth interview</button><button data-a="ai">✨ AI settings</button><button data-a="links">🌐 All job sites & sources</button>
             <button data-a="share">📤 Share (link / QR)</button>
             <button data-a="export">⬇️ Export profile</button><button data-a="import">⬆️ Import profile</button>
             <button data-a="reset">🗑️ Reset</button>
@@ -135,28 +136,19 @@ label.q{display:block;font-size:13.5px;color:var(--fg);margin:12px 0 5px;font-we
 
     <!-- PROFILE (top) -->
     <div class="card" id="profileCard">
-      <div class="phead"><h3>👤 Your profile</h3><button class="iconbtn" id="editProfile">✏️ Edit</button></div>
+      <div class="phead"><h3>👤 Your profile</h3><span class="tools"><button class="iconbtn" id="analyzeBtn">🧪 Analyze CV</button><button class="iconbtn" id="editProfile">✏️ Edit</button></span></div>
+      <div id="cvHealth"></div>
       <div id="profileBody"></div>
     </div>
 
-    <!-- CAREER TOOLS -->
-    <div class="card" id="toolsCard" style="margin-top:16px">
-      <div class="phead"><h3>🧰 Career tools</h3></div>
-      <div class="chips" style="margin:0 0 13px">
-        <span class="chipro">1️⃣ Analyze CV</span><span class="chipro">2️⃣ Search real jobs</span><span class="chipro">3️⃣ Adapt CV & cover letter</span><span class="chipro">4️⃣ Interview prep</span>
-      </div>
-      <div class="tools2">
-        <button class="btn" id="btnAnalyze">🧪 Analyze my CV &nbsp;·&nbsp; report + /setup</button>
-        <button class="btn ghost" id="btnAdapt">🎯 Adapt CV & cover letter to a posting</button>
-      </div>
-      <div class="help">Analyze reads your pasted CV → ATS score, keyword gaps by role & country, salary + cost of living, compatible roles, and a roast — and can fill your profile. Adapt aligns your CV to a specific posting and drafts a cover letter + interview prep.</div>
-    </div>
-
-    <!-- SEARCH TOOL (bottom) -->
+    <!-- SEARCH TOOL -->
     <div class="card" id="searchCard" style="margin-top:16px">
       <h3>🔎 Search jobs</h3>
-      <div class="f">
-        <div class="f-city"><label>📍 Where — pick or type any city</label><input id="loc" list="locs" placeholder="🌍 Any city…"><datalist id="locs"></datalist></div>
+      <label>📍 Where — tick your target cities, add any, or search worldwide</label>
+      <div class="chips" id="citypick"></div>
+      <div class="f" style="margin-top:9px;align-items:center">
+        <input id="cityadd" list="cityopts" placeholder="➕ add any city…" style="max-width:200px"><datalist id="cityopts"></datalist>
+        <label class="chip" data-ww><input type="checkbox" id="wwToggle">🌍 Worldwide</label>
         <div class="f-age"><label>🕒 Posted within</label><select id="age">
           <option value="30">⏱️ Last 30 minutes</option>
           <option value="1440">🕐 Last 24 hours</option>
@@ -294,23 +286,30 @@ function cityKeys(city){
   if(city==='Remote')base.push('remotive');
   return base;
 }
-function applicable(loc){
+function applicableForCities(cities){
   let keys;
-  if(loc==='All my cities'){const s=new Set();P.cities.forEach(c=>cityKeys(c).forEach(x=>s.add(x)));keys=[...s];}
-  else if(loc==='🌍 Worldwide')keys=['linkedin','greenhouse','lever','ashby','remotive','arbeitnow'];
-  else keys=cityKeys(loc);
+  if(!cities.length||cities[0]==='__WORLD__')keys=['linkedin','greenhouse','lever','ashby','remotive','arbeitnow'];
+  else{const s=new Set();cities.forEach(c=>cityKeys(c).forEach(x=>s.add(x)));keys=[...s];}
   // hosted (static) site can only reach CORS-open browser sources; local mode adds the rest
   return MODE==='local'?keys:keys.filter(k=>CFG.browser.includes(k));
+}
+function selectedCities(){
+  if($('#wwToggle')&&$('#wwToggle').checked)return ['__WORLD__'];
+  return [...$('#citypick').querySelectorAll('input:checked')].map(i=>i.closest('[data-city2]').dataset.city2);
+}
+function renderCityPick(){
+  const cities=[...new Set(P.cities||[])];if(!cities.includes('Remote'))cities.push('Remote');
+  $('#citypick').innerHTML=cities.length?cities.map(c=>'<label class="chip sel" data-city2="'+esc(c)+'"><input type="checkbox" checked>'+esc(c)+'</label>').join(''):'<span class="mut">Add a city below, or tick 🌍 Worldwide.</span>';
+  $('#cityopts').innerHTML=[...new Set([...Object.keys(CFG.cities),...cities])].map(c=>'<option value="'+esc(c)+'">').join('');
 }
 function openApp(){
   $('#onb').classList.add('hide');$('#app').classList.remove('hide');
   $('#hi').textContent='🔎 '+(P.name?P.name+"'s ":'')+'AI Job Search';
-  $('#mode').textContent=MODE==='local'?'local · all sources':'hosted · live multi-source';
+  $('#mode').textContent=(MODE==='local'?'local · all sources':'hosted · live multi-source')+(AI()?' · ✨AI':'');
   $('#mode').title=MODE==='local'?'Running locally — LinkedIn + local boards added on top of the live browser sources':'Hosted site — searches Greenhouse, Lever, Ashby, Remotive & Arbeitnow live in your browser across dozens of companies. Run locally to add LinkedIn + Swiss/Danish boards.';
-  const opts=[];if(P.cities.length>1)opts.push('All my cities');opts.push('🌍 Worldwide');P.cities.forEach(c=>opts.push(c));
-  $('#locs').innerHTML=opts.map(o=>'<option value="'+esc(o)+'">').join('');
-  $('#loc').value=P.cities.length>1?'All my cities':(P.cities[0]||'🌍 Worldwide');
+  renderCityPick();
   renderProfile();renderKeywords();renderSrc();syncSL();
+  if(P.cvText)autoAnalyze();
 }
 // ---- derive the target role from the user's own data ----
 function primaryRole(){
@@ -332,9 +331,9 @@ function renderProfile(){
   const bg=P.background||[], targets=P.cities||[], roles=P.roles||[];
   const rows=[
     ['🧑 Name', P.name?esc(P.name):none],
+    ['🧩 Skills', (P.skills||[]).length?P.skills.map(chip).join(' '):'<span class="mut">none yet — click 🧪 Analyze CV to extract them</span>'],
     ['🎯 Target role', '<b>'+esc(primaryRole())+'</b>'+(roles.length>1?' <span class="mut sm">· also open to: '+esc(roles.slice(1).join(', '))+'</span>':'')],
     ['🎓 Level', esc(lvl)],
-    ['🧩 Skills', (P.skills||[]).length?P.skills.map(chip).join(' '):'<span class="mut">none yet — extract them from your CV</span>'],
     ['🏠 Background', bg.length?bg.map(chip).join(' '):'<span class="mut">where you\'ve lived / studied / worked</span>'],
     ['🎯 Target cities', targets.length?targets.map(chip).join(' '):none],
   ];
@@ -368,11 +367,15 @@ function renderKeywords(){
     : '';
 }
 function renderSrc(){
-  const app=applicable($('#loc').value);
+  const app=applicableForCities(selectedCities());
   $('#srcpick').innerHTML=app.length?app.map(k=>'<label class="chip sel" data-src="'+k+'"><input type="checkbox" checked>'+esc(CFG.sources[k]||k)+'</label>').join('')
-    :'<span class="mut">No searchable source for that location'+(MODE==='static'?' in hosted mode — run locally for more.':'.')+'</span>';
+    :'<span class="mut">No searchable source for that selection'+(MODE==='static'?' in hosted mode — run locally for more.':'.')+'</span>';
 }
-$('#loc').addEventListener('input',renderSrc);
+function addCity(c){if(!c)return;P.cities=P.cities||[];if(!P.cities.some(x=>x.toLowerCase()===c.toLowerCase())){P.cities.push(c);save();renderCityPick();renderProfile();}renderSrc();}
+$('#citypick').onclick=e=>{const l=e.target.closest('[data-city2]');if(!l)return;const cb=l.querySelector('input');setTimeout(()=>{l.classList.toggle('sel',cb.checked);renderSrc();},0);};
+$('#wwToggle').addEventListener('change',()=>{$('#citypick').style.opacity=$('#wwToggle').checked?'.45':'1';renderSrc();});
+$('#cityadd').addEventListener('keydown',e=>{if(e.key==='Enter'){addCity(e.target.value.trim());e.target.value='';}});
+$('#cityadd').addEventListener('change',e=>{if(Object.keys(CFG.cities).includes(e.target.value.trim())){addCity(e.target.value.trim());e.target.value='';}});
 $('#srcpick').onclick=e=>{const l=e.target.closest('[data-src]');if(!l)return;const cb=l.querySelector('input');setTimeout(()=>l.classList.toggle('sel',cb.checked),0);};
 $('#kwpick').onclick=e=>{const l=e.target.closest('[data-kw]');if(!l)return;const cb=l.querySelector('input');setTimeout(()=>l.classList.toggle('sel',cb.checked),0);};
 $('#kwadd').onkeydown=e=>{if(e.key!=='Enter')return;const v=e.target.value.trim();if(!v)return;
@@ -380,8 +383,7 @@ $('#kwadd').onkeydown=e=>{if(e.key!=='Enter')return;const v=e.target.value.trim(
   if(![...box.querySelectorAll('[data-kw]')].some(l=>l.dataset.kw.toLowerCase()===v.toLowerCase())){
     const l=document.createElement('label');l.className='chip sel';l.dataset.kw=v;l.innerHTML='<input type="checkbox" checked>'+esc(v);box.appendChild(l);}
   e.target.value='';};
-$('#editProfile').onclick=startOnb;
-$('#btnAnalyze').onclick=analyzeForm;$('#btnAdapt').onclick=adaptForm;
+$('#editProfile').onclick=startOnb;$('#analyzeBtn').onclick=analyzeForm;
 
 // ============ Search ============
 // mins-based window; accepts a full ISO string OR an epoch-ms number for sub-day precision
@@ -433,9 +435,11 @@ async function browserSearch(kws,cf,age,sel){
 async function go(){
   const kws=[...$('#kwpick').querySelectorAll('input:checked')].map(i=>i.closest('[data-kw]').dataset.kw);
   const sel=[...$('#srcpick').querySelectorAll('input:checked')].map(i=>i.closest('[data-src]').dataset.src);
-  const lv=$('#loc').value.trim(),age=+$('#age').value;
-  let cities;if(lv==='All my cities')cities=P.cities;else if(lv==='🌍 Worldwide')cities=['__WORLD__'];else cities=[lv];
-  const cf=lv==='🌍 Worldwide'?null:(lv==='All my cities'?P.cities:[lv]);
+  const age=+$('#age').value;
+  const cities=selectedCities();
+  const worldwide=cities[0]==='__WORLD__';
+  const cf=worldwide?null:cities;
+  if(!cities.length){$('#status').textContent='Tick at least one city, or 🌍 Worldwide.';return;}
   if(!sel.length){$('#status').textContent='Pick at least one source to search.';return;}
   const btn=$('#go');btn.disabled=true;btn.textContent='Searching…';
   $('#status').innerHTML='<span class="spin"></span> searching…';$('#count').textContent='';$('#resPanel').classList.add('hide');
@@ -527,8 +531,9 @@ function openJobDetail(job){if(!job.align)job.align=alignment(job);
   const tgt=iv.salaryMin?(sal.mid<+iv.salaryMin?' &nbsp;<span class="pct p-low" style="color:#fff">below your '+esc(String(iv.salaryMin))+'k target</span>':' &nbsp;<span class="pct p-hi">meets your '+esc(String(iv.salaryMin))+'k target</span>'):'';
   h+='<div class="prow"><span class="k">💰 Est. salary</span><span><b>'+sal.cur+sal.lo+'k – '+sal.cur+sal.hi+'k</b> <span class="mut sm">/yr · '+sal.lv+' '+sal.fam+' · '+sal.reg.toUpperCase()+' · rough estimate</span><br>'+band()+tgt+'</span></div>';
   h+='<div class="prow"><span class="k">📝 CV advice</span><span><ul style="margin:0;padding-left:18px">'+cvAdvice(job).map(x=>'<li style="margin:5px 0">'+x+'</li>').join('')+'</ul></span></div>';
-  h+='<div class="linkline" style="margin-top:14px"><a class="btn" href="'+esc(job.url)+'" target="_blank" rel="noopener">Open posting ↗</a> <button class="btn ghost" id="starDetail">'+(isSL(job)?'★ Shortlisted':'☆ Add to shortlist')+'</button></div>';
+  h+='<div class="linkline" style="margin-top:14px;flex-wrap:wrap"><a class="btn" href="'+esc(job.url)+'" target="_blank" rel="noopener">Open posting ↗</a> <button class="btn" id="adaptJob">🎯 Adapt CV, cover letter & interview prep</button> <button class="btn ghost" id="starDetail">'+(isSL(job)?'★ Shortlisted':'☆ Add to shortlist')+'</button></div>';
   modal(h);
+  $('#adaptJob').onclick=()=>adaptFromJob(job);
   const sd=$('#starDetail');if(sd)sd.onclick=()=>{if(isSL(job))SL=SL.filter(x=>x.url!==job.url);else SL.push(job);saveSL();sd.textContent=isSL(job)?'★ Shortlisted':'☆ Add to shortlist';render(LASTROWS);};
 }
 // ============ Career tools: CV analysis · ATS · salary+cost-of-living · adapt · cover letter · interview ============
@@ -560,8 +565,34 @@ async function priceLevel(countryName){
   return null;
 }
 // AI (genuine generation) — available only when the local server has an API key
-const AI=()=>MODE==='local'&&SERVER&&SERVER.ai;
-async function aiCall(task,payload){const r=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task,profile:P,...payload})});const d=await r.json();if(d.error)throw new Error(d.error);return d.text||'';}
+const AIKEY='aijs_anthropic_key';
+function aiKey(){try{return localStorage.getItem(AIKEY)||''}catch{return ''}}
+const AI=()=>!!((MODE==='local'&&SERVER&&SERVER.ai)||aiKey());
+function aiPromptClient(task,b){
+  const P2=b.profile||{},iv=P2.interview||{};
+  const who='Candidate: '+(P2.name||'(unnamed)')+' · target role(s): '+((P2.roles||[]).join(', ')||P2.role||'—')+' · level: '+(P2.level||'—')+'.\nSkills: '+((P2.skills||[]).join(', '))+'.\nStrengths: '+((iv.strengths||[]).join(', '))+'.\nKey achievements: '+((iv.achievements||[]).join(' | '))+'.\nLanguages: '+((iv.languages||[]).join(', '))+'. Notes: '+(P2.notes||'')+'.';
+  if(task==='cover')return 'Write a concise, warm-but-professional one-page cover letter (~230 words) for the role "'+(b.role||'')+'"'+(b.company?' at '+b.company:'')+'. Mirror the posting and use ONLY real details from the candidate. No clichés or invented facts.\n\n'+who+'\n\nJOB POSTING:\n'+(b.posting||'(not provided)')+'\n\nCANDIDATE CV:\n'+(b.cv||'(not provided)')+'\n\nOutput ONLY the letter body text.';
+  if(task==='roast')return 'You are a blunt but constructive senior recruiter. Critically review this CV for a "'+(b.role||'')+'" role targeting '+(b.country||'')+'. Return markdown: (1) 3–5 "Before → Better" rewrites — quote the weak bullets verbatim then rewrite each with scale, stack and a measurable result; (2) the top ATS keywords missing for this role & country; (3) three prioritized fixes. Be specific; never invent numbers.\n\n'+who+'\n\nCV:\n'+(b.cv||'(not provided)');
+  if(task==='interview')return 'Create an interview-prep guide for "'+(b.role||'')+'". Give 6 likely questions and, for each, a tailored STAR model-answer outline drawing on the candidate\'s REAL experience below. End with 3 sharp questions the candidate should ask.\n\n'+who+'\n\n'+(b.posting?'JOB POSTING:\n'+b.posting:'');
+  return who;
+}
+async function aiCall(task,payload){
+  const body={task,profile:P,...payload};
+  if(MODE==='local'&&SERVER&&SERVER.ai){const r=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(d.error)throw new Error(d.error);return d.text||'';}
+  const key=aiKey();if(!key)throw new Error('No API key — open ✨ AI from the ⚙️ menu.');
+  const model=(SERVER&&SERVER.aiModel)||'claude-sonnet-5';
+  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:1800,system:'You are an expert career coach and CV writer. Be concrete, specific and honest. Never invent facts, employers, dates or numbers the candidate did not provide.',messages:[{role:'user',content:aiPromptClient(task,body)}]})});
+  const d=await res.json();if(d.error)throw new Error((d.error&&d.error.message)||'AI error');return (d.content||[]).map(c=>c.text||'').join('').trim();
+}
+function aiSettings(){
+  const on=aiKey(),srv=MODE==='local'&&SERVER&&SERVER.ai;
+  modal('<h3>✨ AI settings</h3><p class="mut sm">Turn on AI-written CV roasts, cover letters and interview answers. Paste your <b>Anthropic API key</b> — it is stored only in <b>this browser</b> and sent only to Anthropic, never to us or GitHub. Create one at <a class="link" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com ↗</a>.</p>'+
+  '<label class="q">Anthropic API key</label><input id="aiKeyIn" type="password" placeholder="sk-ant-…" value="'+esc(on)+'">'+
+  '<div class="help">Status: '+(srv?'✨ <b style="color:var(--hi)">on</b> via local server key':on?'✨ <b style="color:var(--hi)">on</b> (key saved in this browser)':'off — paste a key to enable')+'. Most secure: run locally with <code>ANTHROPIC_API_KEY</code> set (see README).</div>'+
+  '<div class="row" style="margin-top:16px"><button class="btn ghost" id="aiClear">Remove key</button><button class="btn" id="aiSave">Save & turn on ✨</button></div>');
+  $('#aiSave').onclick=()=>{const k=$('#aiKeyIn').value.trim();try{k?localStorage.setItem(AIKEY,k):localStorage.removeItem(AIKEY);}catch{}$('#overlay').classList.add('hide');openApp();};
+  $('#aiClear').onclick=()=>{try{localStorage.removeItem(AIKEY);}catch{}$('#aiKeyIn').value='';};
+}
 function fmtAI(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^#+\s*(.+)$/gm,'<b>$1</b>').replace(/\n/g,'<br>');}
 function salaryByRegion(fam,lv,reg){const b=(SAL_BASE[fam]||SAL_BASE.design)[lv]||SAL_BASE.design.mid;const m=SAL_MULT[reg]||1;const lo=Math.round(b[0]*m/5)*5,hi=Math.round(b[1]*m/5)*5;return {lo,hi,mid:(lo+hi)/2};}
 function improveHint(fam){return {design:'Figma / design systems',eng:'React / TypeScript',pm:'roadmap / OKRs',data:'SQL / Python'}[fam]||'the tools the role names';}
@@ -627,11 +658,20 @@ function analyzeForm(){
   let h='<h3>🧪 Analyze my CV</h3><p class="mut sm">Paste your CV text (copy it from your PDF/DOCX), pick the target role & country, and get a full report: ATS score, keyword gaps, salary & cost of living, compatible roles and a CV roast. This is the in-app <b>/setup</b> — it can also fill your profile from what it finds.</p>';
   h+='<label class="q">Target role</label><input id="anRole" value="'+esc(role)+'">';
   h+='<label class="q">Target country</label><select id="anCountry">'+Object.keys(COUNTRY).map(c=>'<option'+(c===country?' selected':'')+'>'+esc(c)+'</option>').join('')+'</select>';
-  h+='<label class="q">Paste your CV text</label><textarea id="anCV" rows="9" placeholder="Paste the full text of your CV here…">'+esc(LASTCV)+'</textarea>';
+  h+='<label class="q">Paste your CV text</label><textarea id="anCV" rows="9" placeholder="Paste the full text of your CV here… (it\'s saved locally so analysis runs automatically next time)">'+esc(P.cvText||LASTCV)+'</textarea>';
   h+='<div class="row" style="margin-top:16px"><button class="btn ghost" id="anCancel">Close</button><button class="btn" id="anGo">Analyze ✓</button></div>';
   modal(h);
   $('#anCancel').onclick=()=>$('#overlay').classList.add('hide');
-  $('#anGo').onclick=()=>{const cv=$('#anCV').value.trim();if(cv.length<40){alert('Paste a bit more of your CV text.');return;}LASTCV=cv;const r=$('#anRole').value.trim(),c=$('#anCountry').value;reportModal(analyzeCV(cv,r,c),r,c);};
+  $('#anGo').onclick=()=>{const cv=$('#anCV').value.trim();if(cv.length<40){alert('Paste a bit more of your CV text.');return;}
+    LASTCV=cv;P.cvText=cv;const r=$('#anRole').value.trim(),c=$('#anCountry').value;const a=analyzeCV(cv,r,c);
+    const add=a.present.map(k=>k.replace(/\b\w/g,x=>x.toUpperCase()));P.skills=[...new Set([...(P.skills||[]),...add])];
+    save();renderProfile();renderKeywords();autoAnalyze();reportModal(a,r,c);};
+}
+function autoAnalyze(){
+  const box=$('#cvHealth');if(!box)return;if(!P.cvText){box.innerHTML='';return;}
+  const city=(P.cities||[])[0]||'Germany',country=COUNTRY_OF[city]||'Germany',role=primaryRole(),a=analyzeCV(P.cvText,role,country);
+  box.innerHTML='<div class="cta" style="display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap"><span>🧪 <b>CV health '+a.score+'/100</b> · '+esc(role)+' · ATS coverage '+Math.round(a.coverage*100)+'%'+(a.missing.length?' · add: <b>'+esc(a.missing.slice(0,3).join(', '))+'</b>':'')+'</span><a class="link" id="viewReport" style="cursor:pointer">View full report →</a></div>';
+  const v=$('#viewReport');if(v)v.onclick=()=>reportModal(a,role,country);
 }
 // ---- Adapt to a posting: ATS before/after + cover letter + interview ----
 function atsKwOf(text){text=(text||'').toLowerCase();return [...new Set(Object.values(ATS_KW).flat())].filter(k=>text.includes(k));}
@@ -658,6 +698,12 @@ function adaptForm(){
   modal(h);
   $('#adCancel').onclick=()=>$('#overlay').classList.add('hide');
   $('#adGo').onclick=()=>{const post=$('#adPost').value.trim(),cv=$('#adCV').value.trim();if(post.length<30){alert('Paste the job posting.');return;}LASTCV=cv||LASTCV;adaptReport(post,cv);};
+}
+function adaptFromJob(job){
+  const posting=(job.title||'')+(job.company?' at '+job.company:'')+(job.location?' — '+job.location:'')+'\n\n'+(job.content||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,4000);
+  const cv=P.cvText||LASTCV||'';
+  if(!cv){modal('<h3>🎯 Adapt to this job</h3><p class="mut">First add your CV so we can align it. Paste it in <b>🧪 Analyze CV</b> (it\'s saved for next time), then reopen this.</p><div class="row"><span></span><button class="btn" id="goAn">🧪 Analyze CV</button></div>');const g=$('#goAn');if(g)g.onclick=analyzeForm;return;}
+  adaptReport(posting,cv);
 }
 function adaptReport(posting,cv){
   const chip=(t,c)=>'<span class="chipro '+(c||'')+'">'+esc(t)+'</span>';
@@ -704,7 +750,7 @@ $('#results').onclick=e=>{
   const d=e.target.closest('[data-detail]');if(d){const j=LASTROWS.find(x=>x.url===d.dataset.detail);if(j)openJobDetail(j);return;}
   const st=e.target.closest('.star');if(!st)return;const j=LASTROWS.find(x=>x.url===st.dataset.url);if(!j)return;
   if(isSL(j)){SL=SL.filter(x=>x.url!==j.url);st.classList.remove('on');st.textContent='☆';}else{SL.push(j);st.classList.add('on');st.textContent='★';}saveSL();};
-$('#go').onclick=go;$('#loc').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
+$('#go').onclick=go;
 function isSL(j){return SL.some(x=>x.url===j.url)}
 function syncSL(){$('#slBtn').textContent='⭐ Shortlist ('+SL.length+')'}
 
@@ -755,6 +801,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('.menu'))$('#pop').cl
 $('#pop').onclick=e=>{const a=e.target.dataset.a;if(!a)return;$('#pop').classList.add('hide');
   if(a==='edit')startOnb();
   if(a==='interview')interviewModal();
+  if(a==='ai')aiSettings();
   if(a==='reset'){if(confirm('Reset your profile?')){localStorage.removeItem(KEY);P=null;startOnb();}}
   if(a==='export')dl('aijobsearch-profile.json',JSON.stringify(P,null,2));
   if(a==='import')$('#importFile').click();
@@ -826,9 +873,15 @@ function interviewModal(){
       if(Array.isArray(val)?val.length:val!=='')out[k]=val;});
     P.interview=out;save();renderProfile();$('#overlay').classList.add('hide');};
 }
+const SEARCHED=[
+  ['LinkedIn','https://www.linkedin.com/jobs/'],['Big Tech — Greenhouse','https://boards.greenhouse.io/'],['Startups — Lever','https://jobs.lever.co/'],
+  ['Startups — Ashby','https://jobs.ashbyhq.com/'],['Remote — Remotive','https://remotive.com/remote-jobs'],['Europe — Arbeitnow','https://www.arbeitnow.com/'],
+  ['Switzerland — jobs.ch','https://www.jobs.ch/'],['Switzerland — jobup.ch','https://www.jobup.ch/'],['Denmark — Jobindex','https://www.jobindex.dk/'],['Denmark — Jobbank','https://www.jobbank.dk/'],
+];
 function linksModal(){
-  const sec=(t,arr)=>'<h3 style="margin-top:16px">'+t+'</h3><div class="chips">'+arr.map(([n,u])=>'<a class="chip link" href="'+u+'" target="_blank" rel="noopener">'+esc(n)+' ↗</a>').join('')+'</div>';
-  modal('<h3>🌐 More job sites</h3><p class="mut sm">These sites block automated search, so open them directly. Your role & city are ready to paste.</p>'+sec('🏛 Public sector',CFG.publicSector)+sec('📍 Local boards',CFG.local));
+  const sec=(t,arr)=>'<div class="isec">'+t+'</div><div class="chips">'+arr.map(([n,u])=>'<a class="chip link" href="'+u+'" target="_blank" rel="noopener">'+esc(n)+' ↗</a>').join('')+'</div>';
+  modal('<h3>🌐 All job sites & sources</h3><p class="mut sm"><b>🔎 Searched automatically</b> live in-app (Greenhouse, Lever, Ashby, Remotive, Arbeitnow run in your browser; LinkedIn + Swiss/Danish boards run in local mode). The others block bots — open them directly; your role & city are ready to paste.</p>'
+    +sec('🔎 Searched automatically',SEARCHED)+sec('🏛 Public sector',CFG.publicSector)+sec('📍 Local boards (open directly)',CFG.local));
 }
 
 // ============ Boot ============
