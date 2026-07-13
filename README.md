@@ -32,6 +32,15 @@ files ready    with fit ratings     (LaTeX, tailored)
                -> /apply            -> Revise -> Final output
 ```
 
+Plus two research commands:
+
+```
+/analyze [role, country]      Score your CV, ATS keyword gaps, roast (before → better),
+                              and compatible roles — grounded in real postings.
+/salary  <role> in <city>     Live salary + cost-of-living research (levels.fyi,
+                              Glassdoor, Numbeo, World Bank) with sources.
+```
+
 The framework encodes career guidance best practices, including structured evaluation criteria, forward-looking cover letter framing, and optional salary benchmarking.
 
 ## Prerequisites
